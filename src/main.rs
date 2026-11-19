@@ -1029,7 +1029,7 @@ impl Player {
     fn home(self: &Rc<Self>) {
         self.heading(self.text("Home", "Início"));
         let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        actions.add_css_class("home-actions");
+        actions.add_css_class("page-actions");
         for (label, tooltip, action) in [
             (
                 self.text("Open folder", "Abrir pasta"),
@@ -1071,6 +1071,7 @@ impl Player {
 
         self.new_playlist_drop_zone();
         let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        header.add_css_class("page-actions");
         let label = gtk::Label::new(Some(
             self.text("Saved playlists", "Listas de reprodução salvas"),
         ));
@@ -1793,6 +1794,7 @@ impl Player {
         };
         self.heading(&name);
         let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        actions.add_css_class("page-actions");
         let queue = tracks.clone();
         let play = button(self.text("Play", "Tocar"), self, move |player| {
             player.replace_queue_from(queue.clone(), 0, Some(index))

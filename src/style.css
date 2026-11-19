@@ -23,20 +23,20 @@
     min-height: 26px;
     padding: 2px 8px;
 }
-.home-actions > button {
+.page-actions > button:not(.row-action) {
     background-image: none;
     border-radius: 5px;
     box-shadow: none;
     text-shadow: none;
 }
-.home-actions > button:not(.suggested-action) {
+.page-actions > button:not(.row-action):not(.suggested-action) {
     background-color: mix(@player_bg, @player_fg, 0.055);
     border-color: mix(@player_bg, @player_fg, 0.12);
 }
-.home-actions > button:not(.suggested-action):hover {
+.page-actions > button:not(.row-action):not(.suggested-action):hover {
     background-color: mix(@player_bg, @player_fg, 0.10);
 }
-.home-actions > button:not(.suggested-action):active {
+.page-actions > button:not(.row-action):not(.suggested-action):active {
     background-color: mix(@player_bg, @player_fg, 0.15);
 }
 .wordmark {

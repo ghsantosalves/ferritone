@@ -1,0 +1,16 @@
+[package]
+name = "rust-music-player"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+description = "A Linux desktop music player with a searchable library and saved playlists"
+repository = "https://github.com/ghsantosalves/ferritone"
+license = "GPL-3.0-only"
+
+[dependencies]
+gtk = { package = "gtk4", version = "0.9", features = ["v4_10"] }
+gst = { package = "gstreamer", version = "0.23" }
+lofty = "0.22"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"

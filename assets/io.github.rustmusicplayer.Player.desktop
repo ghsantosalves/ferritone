@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Ferritone
+Comment=Play music and manage playlists
+Comment[pt_BR]=Reproduza músicas e gerencie listas de reprodução
+Exec=rust-music-player
+Icon=io.github.rustmusicplayer.Player
+Terminal=false
+Categories=AudioVideo;Audio;Player;
+StartupNotify=true
+StartupWMClass=io.github.rustmusicplayer.Player

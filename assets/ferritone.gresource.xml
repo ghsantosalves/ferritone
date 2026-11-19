@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/io/github/rustmusicplayer/Player/icons">
+    <file alias="scalable/apps/io.github.rustmusicplayer.Player.svg">player-icon.svg</file>
+  </gresource>
+</gresources>

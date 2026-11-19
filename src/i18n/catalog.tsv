@@ -1,0 +1,190 @@
+Accent color	Color de énfasis	Couleur d’accentuation
+Add files	Añadir archivos	Ajouter des fichiers
+Add folder to library	Añadir carpeta a la biblioteca	Ajouter un dossier à la bibliothèque
+Add to playlist	Añadir a una lista	Ajouter à une liste
+Album	Álbum	Album
+Album cover	Portada del álbum	Pochette de l’album
+Appearance	Apariencia	Apparence
+Artist	Artista	Artiste
+Audio waveform	Forma de onda	Forme d’onde audio
+Blue	Azul	Bleu
+Cancel	Cancelar	Annuler
+Changes could not be saved.	No se pudieron guardar los cambios.	Les modifications n’ont pas pu être enregistrées.
+Choose a folder	Elige una carpeta	Choisir un dossier
+Choose a local destination.	Elige un destino local.	Choisissez une destination locale.
+Choose music files	Elige archivos de música	Choisir des fichiers musicaux
+Choose playlist files	Elige archivos de listas	Choisir des fichiers de listes
+Classical	Clásica	Classique
+Close	Cerrar	Fermer
+Copper	Cobre	Cuivre
+Could not export playlist.	No se pudo exportar la lista.	Impossible d’exporter la liste.
+Could not read the selection.	No se pudo leer la selección.	Impossible de lire la sélection.
+Could not start playback.	No se pudo iniciar la reproducción.	Impossible de démarrer la lecture.
+Custom	Personalizado	Personnalisé
+Dark	Oscuro	Sombre
+Display language	Idioma de la interfaz	Langue de l’interface
+Drag to reorder	Arrastra para reordenar	Faites glisser pour réorganiser
+Drag to resize column	Arrastra para ajustar la columna	Faites glisser pour redimensionner la colonne
+Drag to resize playback bar	Arrastra para ajustar la altura de la barra	Faites glisser pour ajuster la hauteur de la barre
+Drag to resize track information	Arrastra para ajustar el ancho de la pista	Faites glisser pour ajuster la largeur de la piste
+Drop files or folders here	Suelta archivos o carpetas aquí	Déposez les fichiers ou dossiers ici
+Electronic	Electrónica	Électronique
+Enable equalizer	Activar el ecualizador	Activer l’égaliseur
+Enlarge album cover	Ampliar la portada del álbum	Agrandir la pochette de l’album
+Equalizer	Ecualizador	Égaliseur
+Equalizer preset	Ajuste predefinido del ecualizador	Préréglage de l’égaliseur
+Equalizer unavailable	Ecualizador no disponible	Égaliseur indisponible
+Export playlist (M3U8)	Exportar lista (M3U8)	Exporter la liste (M3U8)
+Export playlist as M3U8	Exportar lista como M3U8	Exporter la liste au format M3U8
+Flat	Plano	Plat
+Follow system	Seguir el sistema	Suivre le système
+Green	Verde	Vert
+Home	Inicio	Accueil
+Import playlist	Importar lista	Importer une liste
+Install the GStreamer Good Plug-ins to use the equalizer.	Instala los complementos Good de GStreamer para usar el ecualizador.	Installez les greffons Good de GStreamer pour utiliser l’égaliseur.
+Install the GStreamer base plugins to start playback.	Instala los complementos básicos de GStreamer para reproducir audio.	Installez les greffons de base de GStreamer pour lire du son.
+Jazz	Jazz	Jazz
+Length	Duración	Durée
+Library	Biblioteca	Bibliothèque
+Light	Claro	Clair
+Looking for music…	Buscando música…	Recherche de musique…
+Mini player	Minirreproductor	Mini-lecteur
+Move down	Bajar	Descendre
+Move up	Subir	Monter
+Navigation	Navegación	Navigation
+New playlist	Nueva lista	Nouvelle liste
+New playlist · Drop music or playlist files	Nueva lista · Suelta música o listas	Nouvelle liste · Déposez de la musique ou des listes
+Next track	Pista siguiente	Piste suivante
+No playlists found	No se encontraron listas	Aucune liste trouvée
+No supported music or playlists found.	No se encontraron pistas ni listas compatibles.	Aucune piste ni liste compatible n’a été trouvée.
+No tracks found	No se encontraron pistas	Aucune piste trouvée
+Nothing playing	Nada en reproducción	Aucune piste en cours
+Open a folder or play a playlist to start a queue.	Abre una carpeta o reproduce una lista para iniciar la cola.	Ouvrez un dossier ou lisez une liste pour démarrer la file.
+Open folder	Abrir carpeta	Ouvrir un dossier
+Page title in the top bar	Título de página en la barra superior	Titre de la page dans la barre supérieure
+Pause	Pausar	Mettre en pause
+Play	Reproducir	Lire
+Playback position	Posición de reproducción	Position de lecture
+Playlist exported.	Lista exportada.	Liste exportée.
+Playlist name	Nombre de la lista	Nom de la liste
+Playlists	Listas de reproducción	Listes de lecture
+Playlists imported.	Listas importadas.	Listes importées.
+Preferences	Preferencias	Préférences
+Previous track	Pista anterior	Piste précédente
+Queue	Cola	File d’attente
+Remove from playlist	Quitar de la lista	Retirer de la liste
+Rename	Cambiar nombre	Renommer
+Rename playlist	Cambiar nombre de la lista	Renommer la liste
+Repeat off	Repetición desactivada	Répétition désactivée
+Repeat queue	Repetir la cola	Répéter la file
+Repeat track	Repetir la pista	Répéter la piste
+Reset gains	Restablecer ganancias	Réinitialiser les gains
+Resume queue	Reanudar la cola	Reprendre la file
+Return to main window	Volver a la ventana principal	Retour à la fenêtre principale
+Rock	Rock	Rock
+Save	Guardar	Enregistrer
+Saved data could not be read. Changes will not be saved in this session.	No se pudieron leer los datos guardados. Los cambios de esta sesión no se guardarán.	Les données enregistrées sont illisibles. Les modifications de cette session ne seront pas enregistrées.
+Saved playlists	Listas guardadas	Listes enregistrées
+Search as a button	Búsqueda como botón	Recherche sous forme de bouton
+Search playlists	Buscar listas	Rechercher des listes
+Search tracks, artists and albums	Buscar pistas, artistas y álbumes	Rechercher des pistes, des artistes et des albums
+Show album	Mostrar álbum	Afficher l’album
+Show artist	Mostrar artista	Afficher l’artiste
+Show cover thumbnail	Mostrar miniatura de la portada	Afficher la miniature de la pochette
+Show playback time	Mostrar tiempo de reproducción	Afficher le temps de lecture
+Show playing track	Mostrar pista en reproducción	Afficher la piste en cours
+Show search	Mostrar búsqueda	Afficher la recherche
+Show seek bar	Mostrar barra de progreso	Afficher la barre de progression
+Show shuffle and repeat	Mostrar mezcla y repetición	Afficher la lecture aléatoire et la répétition
+Show sidebar	Mostrar barra lateral	Afficher le panneau latéral
+Show track length	Mostrar duración	Afficher la durée
+Show volume	Mostrar volumen	Afficher le volume
+Show volume percentage	Mostrar porcentaje del volumen	Afficher le pourcentage du volume
+Shuffle	Orden aleatorio	Lecture aléatoire
+Sort by album	Ordenar por álbum	Trier par album
+Sort by artist	Ordenar por artista	Trier par artiste
+Sort by title	Ordenar por título	Trier par titre
+This track could not be played.	No se pudo reproducir esta pista.	Cette piste n’a pas pu être lue.
+Title	Título	Titre
+Track order	Orden de las pistas	Ordre des pistes
+Tracks added to playlist.	Pistas añadidas a la lista.	Pistes ajoutées à la liste.
+Use system language	Usar idioma del sistema	Utiliser la langue du système
+View	Ver	Affichage
+View all	Ver todas	Tout afficher
+Violet	Violeta	Violet
+Vocal	Vocal	Voix
+Volume	Volumen	Volume
+track	pista	piste
+tracks	pistas	pistes
+Show playlist buttons	Mostrar botones de lista	Afficher les boutons de la liste
+Show playlist drop area	Mostrar zona de arrastre de lista	Afficher la zone de dépôt de la liste
+Delete playlist	Eliminar lista	Supprimer la liste
+Delete playlist?	¿Eliminar la lista?	Supprimer la liste ?
+Delete	Eliminar	Supprimer
+Only the saved playlist will be removed. The audio files will be kept.	Solo se eliminará la lista guardada. Los archivos de audio se conservarán.	Seule la liste enregistrée sera supprimée. Les fichiers audio seront conservés.
+Mini player display	Visualización del minirreproductor	Affichage du mini-lecteur
+Waveform line	Onda en línea	Onde en ligne
+Waveform bars	Onda en barras	Onde en barres
+Mirrored waveform	Onda reflejada	Onde symétrique
+Playing playlist	Lista en reproducción	Liste en cours de lecture
+Add to queue	Añadir a la cola	Ajouter à la file
+Copy tracks	Copiar pistas	Copier les pistes
+Cut tracks	Cortar pistas	Couper les pistes
+Enable lyrics (Ctrl+Y)	Activar letras (Ctrl+Y)	Activer les paroles (Ctrl+Y)
+Look up lyrics online	Buscar letras en línea	Chercher les paroles en ligne
+Lyrics	Letra	Paroles
+No lyrics available for this track.	No hay letra disponible para esta pista.	Aucune parole disponible pour cette piste.
+Open containing folder	Abrir carpeta de la pista	Ouvrir le dossier de la piste
+Paste at end	Pegar al final	Coller à la fin
+Paste tracks	Pegar pistas	Coller les pistes
+Refresh track information	Actualizar información de las pistas	Actualiser les informations des pistes
+Remove from queue	Quitar de la cola	Retirer de la file
+Select all tracks	Seleccionar todas las pistas	Sélectionner toutes les pistes
+Send track tags and duration to LRCLIB when local lyrics are missing	Envía las etiquetas y la duración a LRCLIB si falta la letra local	Envoie les métadonnées et la durée à LRCLIB en l’absence de paroles locales
+Track information	Información de la pista	Informations sur la piste
+Widen the window to show this column	Amplía la ventana para mostrar esta columna	Agrandissez la fenêtre pour afficher cette colonne
+Open files	Abrir archivos	Ouvrir des fichiers
+Show title bar icon	Mostrar el icono en la barra de título	Afficher l’icône dans la barre de titre
+Enable lyrics	Activar letras	Activer les paroles
+Online lookup sends track tags and duration to LRCLIB.	La búsqueda en línea envía las etiquetas y la duración de la pista a LRCLIB.	La recherche en ligne envoie les métadonnées et la durée de la piste à LRCLIB.
+Open playlist	Abrir lista	Ouvrir la liste
+Play playlist	Reproducir lista	Lire la liste
+Previous result	Resultado anterior	Résultat précédent
+Next result	Resultado siguiente	Résultat suivant
+Show icons in context menus	Mostrar iconos en los menús contextuales	Afficher les icônes dans les menus contextuels
+Resize lyrics	Cambiar el tamaño de las letras	Redimensionner les paroles
+Resize playback bar	Cambiar el tamaño de la barra de reproducción	Redimensionner la barre de lecture
+Resize track information	Cambiar el tamaño de la información de la pista	Redimensionner les informations de la piste
+Show keycaps for menu shortcuts	Mostrar teclas en los atajos de los menús	Afficher les touches des raccourcis dans les menus
+Add folder	Añadir carpeta	Ajouter un dossier
+Manage library	Gestionar biblioteca	Gérer la bibliothèque
+Hidden tracks stay in saved playlists and in the queue.	Las pistas ocultas permanecen en las listas guardadas y en la cola.	Les pistes masquées restent dans les listes enregistrées et dans la file.
+Hide a folder…	Ocultar una carpeta…	Masquer un dossier…
+No hidden items	No hay elementos ocultos	Aucun élément masqué
+Hidden folders	Carpetas ocultas	Dossiers masqués
+Hidden tracks	Pistas ocultas	Pistes masquées
+Show in library	Mostrar en la biblioteca	Afficher dans la bibliothèque
+Hide from library	Ocultar de la biblioteca	Masquer dans la bibliothèque
+Lyric timing	Sincronización de la letra	Synchronisation des paroles
+Reset timing	Restablecer sincronización	Rétablir la synchronisation
+Original timing	Sincronización original	Synchronisation d’origine
+Advanced	Adelantada	Avancée
+Delayed	Retrasada	Retardée
+Drag to resize or double-click to fit	Arrastra para redimensionar o haz doble clic para ajustar	Faites glisser pour redimensionner ou double-cliquez pour ajuster
+Show library buttons	Mostrar botones de la biblioteca	Afficher les boutons de la bibliothèque
+Library folders	Carpetas de la biblioteca	Dossiers de la bibliothèque
+No folders or hidden items	No hay carpetas ni elementos ocultos	Aucun dossier ni élément masqué
+Choose a folder mounted or synced to this computer.	Elige una carpeta montada o sincronizada en este equipo.	Choisissez un dossier monté ou synchronisé sur cet ordinateur.
+Audio	Audio	Audio
+Off	Desactivado	Désactivé
+Track gain	Ganancia de pista	Gain par piste
+Album gain	Ganancia de álbum	Gain par album
+Limit gain to avoid clipping	Limitar la ganancia para evitar saturación	Limiter le gain pour éviter la saturation
+ReplayGain levels volume using the audio file's gain tags.	ReplayGain nivela el volumen mediante las etiquetas de ganancia del archivo.	ReplayGain égalise le volume à partir des métadonnées de gain du fichier.
+ReplayGain is unavailable.	ReplayGain no está disponible.	ReplayGain est indisponible.
+Drag the lyrics to align the current verse with the song.	Arrastra la letra para alinear el verso actual con la canción.	Faites glisser les paroles pour aligner le vers actuel sur la chanson.
+Search options	Buscar opciones	Rechercher des options
+No options found	No se encontraron opciones	Aucune option trouvée
+Play music from a folder now	Reproducir ahora la música de una carpeta	Lire la musique d’un dossier maintenant
+Add music to the library without changing playback	Añadir música a la biblioteca sin cambiar la reproducción	Ajouter de la musique à la bibliothèque sans modifier la lecture
+Waveform style	Estilo de la forma de onda	Style de la forme d’onde

@@ -1,0 +1,291 @@
+@define-color player_bg PLAYER_BACKGROUND;
+@define-color player_fg PLAYER_TEXT;
+@define-color player_accent ACCENT_COLOR;
+
+.compact-titlebar,
+.compact-titlebar > windowhandle > box {
+    min-height: 28px;
+    padding: 0 6px;
+}
+.compact-titlebar button {
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0;
+}
+
+.sidebar {
+    background: mix(@player_bg, @player_fg, 0.045);
+    border-right: 1px solid mix(@player_bg, @player_fg, 0.14);
+    padding: 14px 10px;
+    min-width: 124px;
+}
+.sidebar button {
+    min-height: 26px;
+    padding: 2px 8px;
+}
+.wordmark {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.content { padding: 12px 16px; }
+.page-title { font-size: 23px; font-weight: 800; }
+.section-title, .status { font-weight: 700; }
+.status { padding: 8px 16px 0; }
+
+.transport {
+    background: mix(@player_bg, @player_fg, 0.045);
+    border-top: 1px solid mix(@player_bg, @player_fg, 0.14);
+    padding: 4px 8px;
+}
+.transport button {
+    min-width: 26px;
+    min-height: 26px;
+    padding: 0;
+}
+.transport button:checked, .transport button.enabled {
+    background: mix(@player_bg, @player_accent, 0.44);
+    border-color: @player_accent;
+    color: @player_fg;
+}
+.transport scale { padding: 0 4px; }
+.playing-title { font-weight: 700; }
+.playing-artist { font-size: 0.91em; opacity: 0.72; }
+.playback-clock { font-family: monospace; }
+scale highlight { background: @player_accent; }
+button.suggested-action {
+    background: @player_accent;
+    border-color: @player_accent;
+    color: ACCENT_FOREGROUND;
+    font-weight: 700;
+}
+
+.drop-zone {
+    min-height: 24px;
+    padding: 4px 10px;
+    background: transparent;
+    box-shadow: none;
+    border: 1px dashed mix(@player_bg, @player_accent, 0.65);
+    border-radius: 6px;
+}
+.drop-zone:hover { background: mix(@player_bg, @player_fg, 0.055); }
+.drop-zone:drop(active), .table-row:drop(active), .sidebar button:drop(active) {
+    background: mix(@player_bg, @player_accent, 0.30);
+    outline-offset: -2px;
+    outline: 2px solid @player_accent;
+}
+.track-header {
+    padding: 3px 5px;
+    font-size: 0.92em;
+    font-weight: 700;
+    border-bottom: 1px solid mix(@player_bg, @player_fg, 0.14);
+}
+.table-row {
+    padding: 0 5px;
+    border: 1px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+    min-height: 27px;
+    background: @player_bg;
+    color: @player_fg;
+}
+.table-row.alternate { background: mix(@player_bg, @player_fg, 0.06); }
+.table-row:hover { background: mix(@player_bg, @player_fg, 0.11); }
+.table-row.current {
+    border-left-color: @player_accent;
+    background: mix(@player_bg, @player_accent, 0.30);
+    font-weight: 700;
+}
+.track-title, .row-action {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    color: @player_fg;
+    min-height: 26px;
+    padding: 0;
+}
+.row-action {
+    min-width: 26px;
+}
+.row-action:hover {
+    background: mix(@player_bg, @player_fg, 0.13);
+}
+.empty-state { padding: 16px; }
+
+.transport .artwork-button {
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+}
+
+.view-options { padding: 4px; }
+
+.column-grip {
+    background-image: linear-gradient(to right, transparent 44%, mix(@player_bg, @player_fg, 0.25) 44%, mix(@player_bg, @player_fg, 0.25) 56%, transparent 56%);
+}
+.column-grip:hover { background-color: mix(@player_bg, @player_fg, 0.12); }
+
+/* Rounded controls use the native widget palette in both appearances. */
+@define-color player_surface mix(@player_bg, @player_fg, 0.085);
+@define-color player_hover mix(@player_bg, @player_fg, 0.15);
+
+.sidebar button, .compact-titlebar menubutton > button, .transport button,
+.transport menubutton > button {
+    background: @player_surface;
+    border-color: transparent;
+    border-radius: 8px;
+    box-shadow: none;
+}
+.sidebar button:hover, .compact-titlebar menubutton > button:hover, .transport button:hover,
+.transport menubutton > button:hover {
+    background: @player_hover;
+}
+.transport button:checked, .transport button.enabled {
+    background: mix(@player_bg, @player_accent, 0.48);
+    border-color: @player_accent;
+}
+.transport .artwork-button {
+    background: transparent;
+    border-radius: 8px;
+}
+.transport .artwork-button:hover { background: @player_hover; }
+.transport scale trough { border-radius: 999px; }
+.transport scale highlight { border-radius: 999px; }
+.transport-menu button { min-width: 32px; }
+
+.track-header {
+    border: 1px solid transparent;
+    border-bottom-color: mix(@player_bg, @player_fg, 0.14);
+}
+.track-title { border: 0; }
+
+
+window.ferritone,
+.ferritone popover > contents {
+    background: @player_bg;
+    color: @player_fg;
+}
+.ferritone .compact-titlebar {
+    background: #36342f;
+    color: @player_fg;
+}
+
+.transport button, .transport menubutton > button {
+    min-width: 30px;
+    min-height: 30px;
+    border-radius: 7px;
+    padding: 0;
+}
+.transport-resize { background: @player_surface; }
+.transport-resize:hover, .transport-resize:active { background: @player_hover; }
+.transport-lyrics {
+    background: @player_surface;
+    padding: 3px 12px;
+    font-size: 0.92em;
+}
+.lyric-current { font-weight: 700; }
+.lyric-nearby { opacity: 0.68; }
+.lyric-distant { opacity: 0.50; }
+
+.player-menu box button {
+    padding: 4px 12px;
+}
+.player-menu > contents { padding: 7px; min-width: 154px; }
+.context-menu > contents {
+    background: @player_bg;
+    padding: 3px;
+    border-radius: 6px;
+}
+.context-menu button.context-action {
+    min-height: 20px;
+    padding: 2px 9px;
+    background: @player_bg;
+    border: 0;
+    border-radius: 3px;
+    box-shadow: none;
+    color: @player_fg;
+}
+.context-menu button.context-action:nth-child(even) {
+    background: mix(@player_bg, @player_fg, 0.055);
+}
+.context-menu button.context-action:hover,
+.context-menu button.context-action:focus-visible {
+    background: mix(@player_bg, @player_accent, 0.22);
+    outline-color: @player_accent;
+}
+.context-menu button.context-action:disabled { opacity: 0.55; }
+.menu-shortcut { font-size: 0.85em; opacity: 0.68; }
+.menu-shortcut-keys { font-size: 0.8em; }
+.menu-shortcut-keys .keycap {
+    min-width: 13px;
+    min-height: 15px;
+    margin: 0;
+    padding: 0 4px;
+    background: @player_surface;
+    border: 1px solid mix(@player_bg, @player_fg, 0.20);
+    border-radius: 4px;
+    box-shadow: none;
+}
+.search-bar button {
+    min-width: 25px;
+    min-height: 24px;
+    padding: 0;
+}
+.search-counter { padding: 0 5px; font-size: 0.9em; }
+.search-bar entry.search:focus-within {
+    border-color: @player_accent;
+    outline-color: @player_accent;
+    box-shadow: inset 0 0 0 1px @player_accent;
+}
+.search-bar entry.search selection {
+    background-color: @player_accent;
+    color: ACCENT_FOREGROUND;
+}
+checkbutton:focus-visible { outline-color: @player_accent; }
+checkbutton check:checked {
+    background: @player_accent;
+    border-color: @player_accent;
+    color: ACCENT_FOREGROUND;
+    box-shadow: none;
+}
+.table-row.search-result { box-shadow: inset 0 0 0 1px @player_accent; }
+.preferences-control > button {
+    min-height: 21px;
+    padding: 2px 8px;
+    background: @player_surface;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    box-shadow: none;
+}
+.preferences-control > button:hover,
+.preferences-control > button:checked { background: @player_hover; }
+.track-header > overlay:drop(active) { background: @player_hover; }
+
+.mini-layout { padding: 9px; }
+.mini-visual { background: @player_surface; border-radius: 10px; }
+.mini-lyrics { padding: 10px 16px; font-size: 1.05em; }
+.mini-lyrics .lyric-current { font-size: 1.18em; }
+
+.library-tracks, .library-tracks row {
+    background: @player_bg;
+    padding: 0;
+    margin: 0;
+}
+.library-tracks row {
+    border: 0;
+    outline: none;
+    box-shadow: none;
+}
+.library-tracks row, .library-tracks .table-row, .library-tracks .row-action {
+    transition: none;
+}
+.library-tracks row:focus-visible .table-row {
+    box-shadow: inset 0 0 0 1px mix(@player_bg, @player_fg, 0.45);
+}
+.library-tracks row:selected .table-row {
+    background: mix(@player_bg, @player_accent, 0.18);
+    box-shadow: inset 0 0 0 1px @player_accent;
+}
+.library-tracks row:selected .table-row.current {
+    background: mix(@player_bg, @player_accent, 0.36);
+}

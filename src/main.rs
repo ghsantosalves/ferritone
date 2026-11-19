@@ -1029,6 +1029,7 @@ impl Player {
     fn home(self: &Rc<Self>) {
         self.heading(self.text("Home", "Início"));
         let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        actions.add_css_class("home-actions");
         for (label, tooltip, action) in [
             (
                 self.text("Open folder", "Abrir pasta"),

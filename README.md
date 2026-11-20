@@ -62,6 +62,18 @@ Enable **Look up lyrics online** separately to search [LRCLIB](https://lrclib.ne
 
 Ferritone exposes track details and playback controls over MPRIS. In GNOME, open the clock and notifications panel to access the current track, play or pause, and skip tracks. Desktop media keys work on environments that route them to MPRIS players.
 
+Right-click Ferritone's icon in the dock or app grid for **Play/Pause**, **Previous Track**, and **Next Track**.
+
+To show these controls when you hover over Ferritone's icon in the dock, install the optional GNOME Shell extension in `extras/gnome-shell-dock-controls` (GNOME 48 or later; works with Dash to Dock and Ubuntu Dock):
+
+```sh
+uuid=ferritone-dock-controls@ghsantosalves.github.io
+mkdir -p ~/.local/share/gnome-shell/extensions/$uuid
+cp extras/gnome-shell-dock-controls/* ~/.local/share/gnome-shell/extensions/$uuid/
+```
+
+Log out and back in, then run `gnome-extensions enable $uuid`.
+
 In **Preferences → Audio**, ReplayGain levels volume using embedded gain tags. **Track gain** suits mixed queues, and **Album gain** preserves the relative level of an album and falls back to track gain when needed. The optional peak protection caps boosting using the file's peak tag. Tracks without gain tags play at their original level.
 
 ## Build

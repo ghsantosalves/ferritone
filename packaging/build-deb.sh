@@ -58,7 +58,7 @@ Section: sound
 Priority: optional
 Maintainer: ghsantosalves <40925712+ghsantosalves@users.noreply.github.com>
 Installed-Size: $(du -sk "$package/usr" | cut -f1)
-Depends: $depends, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good
+Depends: $depends, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, libglib2.0-bin
 Recommends: curl
 Homepage: https://github.com/ghsantosalves/ferritone
 Description: Music player for local audio collections

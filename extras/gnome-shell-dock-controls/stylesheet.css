@@ -1,0 +1,53 @@
+.ferritone-dock-controls {
+  background-color: #1e1d1b;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 14px;
+  padding: 10px 12px 8px;
+  spacing: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  min-width: 180px;
+  max-width: 280px;
+}
+
+.ferritone-dock-controls-title {
+  color: #f2f2f2;
+  font-weight: bold;
+  font-size: 10.5pt;
+}
+
+.ferritone-dock-controls-artist {
+  color: rgba(242, 242, 242, 0.70);
+  font-size: 9pt;
+}
+
+.ferritone-dock-controls-buttons {
+  spacing: 6px;
+  padding-top: 4px;
+}
+
+.ferritone-dock-controls-button {
+  color: #f2f2f2;
+  border-radius: 99px;
+  padding: 8px;
+}
+
+.ferritone-dock-controls-button:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.ferritone-dock-controls-button:active {
+  background-color: rgba(255, 255, 255, 0.20);
+}
+
+.ferritone-dock-controls-button:insensitive {
+  color: rgba(242, 242, 242, 0.35);
+}
+
+.ferritone-dock-controls-play {
+  background-color: #ee853f;
+  color: #1e1d1b;
+}
+
+.ferritone-dock-controls-play:hover {
+  background-color: #f29a5c;
+}

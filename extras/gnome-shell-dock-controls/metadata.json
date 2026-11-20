@@ -1,0 +1,8 @@
+{
+  "uuid": "ferritone-dock-controls@ghsantosalves.github.io",
+  "name": "Ferritone Dock Controls",
+  "description": "Shows Ferritone's previous, play/pause, and next controls when you hover over its icon in the dock.",
+  "shell-version": ["48", "49"],
+  "url": "https://github.com/ghsantosalves/ferritone",
+  "version": 1
+}

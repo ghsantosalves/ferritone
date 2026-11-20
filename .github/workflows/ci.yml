@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    # The Debian 13 toolchain and libraries match the ones the .deb is built with.
+    container: debian:trixie
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates git build-essential pkgconf cargo rustc \
+            libglib2.0-dev-bin libgtk-4-dev libgstreamer1.0-dev \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: trixie-cargo-${{ hashFiles('Cargo.lock') }}
+          restore-keys: trixie-cargo-
+      - name: Build
+        run: cargo build --locked
+      - name: Test
+        run: cargo test --locked

@@ -117,9 +117,11 @@ packaging/build-deb.sh
 
 The package is written to `target/dist/`. It includes the AppStream metadata, desktop entry, icon, and the license notices of every bundled Rust crate.
 
+To publish a release, update the version in `Cargo.toml` and add a `<release>` entry to `assets/io.github.rustmusicplayer.Player.metainfo.xml`, then push a matching tag such as `v0.1.3`. The Release workflow builds the package on Debian 13 and opens a draft GitHub release with the `.deb`, `SHA256SUMS`, and notes taken from the metainfo entry. Review the draft and publish it.
+
 ## Data and playlists
 
-Ferritone saves the library, playlists, last queue, and preferences in `$XDG_DATA_HOME/rust-music-player/library.json`, which defaults to `~/.local/share/rust-music-player/library.json`. The library references audio files where they are stored. Back up the JSON file to preserve Ferritone's state.
+Ferritone saves the library, playlists, last queue, and preferences in `$XDG_DATA_HOME/rust-music-player/library.json`, which defaults to `~/.local/share/rust-music-player/library.json`. While playing, the position is also saved every 30 seconds to `position.json` in the same folder, which is removed whenever the library is saved. The library references audio files where they are stored. Back up the JSON file to preserve Ferritone's state.
 
 M3U8 exports use relative paths for tracks below the export folder and absolute paths for other tracks. Keep the same folder structure when moving an exported playlist and its audio files together.
 
@@ -128,6 +130,7 @@ M3U8 exports use relative paths for tracks below the export folder and absolute 
 | Area | Files |
 | --- | --- |
 | GTK window, playback controls, and GStreamer pipeline | `src/main.rs` |
+| Track skipping and autosave rules | `src/playback.rs` |
 | Mini player, waveform rendering, lyrics, and equalizer | `src/mini.rs`, `src/waveform.rs`, `src/lyrics.rs`, `src/equalizer.rs` |
 | Library state, tag reading, and playlist import | `src/library.rs`, `src/metadata.rs`, `src/playlist_file.rs` |
 | Library visibility controls | `src/library_view.rs` |

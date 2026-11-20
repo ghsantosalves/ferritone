@@ -332,9 +332,12 @@ function renderTransport() {
   const position = phone ? audio.currentTime * 1000 : state.position_ms;
   const duration = phone ? (isFinite(audio.duration) ? audio.duration * 1000 : 0) : state.duration_ms;
   if (!seeking) {
-    $("seek").max = Math.max(1, Math.round(duration));
-    $("seek").value = Math.round(position);
-    $("position").textContent = time(position);
+    // The bar and the time always show the same value, kept within the track's length.
+    const max = Math.max(1, Math.round(duration || 0));
+    const value = Math.min(Math.max(0, Math.round(position || 0)), max);
+    $("seek").max = max;
+    $("seek").value = value;
+    $("position").textContent = time(value);
   }
   $("duration").textContent = time(duration);
   if (!changingVolume) $("volume").value = Math.round((phone ? audio.volume : state.volume) * 100);
@@ -424,10 +427,23 @@ $("next").onclick = () => output === "pc" ? send("next") : stepLocal(1, false);
 $("previous").onclick = () => output === "pc" ? send("previous") : stepLocal(-1, false);
 $("shuffle").onclick = () => send("shuffle");
 $("repeat").onclick = () => send("repeat");
-$("seek").oninput = () => { seeking = true; $("position").textContent = time(+$("seek").value); };
+// Mobile browsers report the bar moving when a touch turns into a page scroll, but never that it
+// ended, so any of these ends the drag, and the bar resumes on its own after a short pause.
+let seekIdle = null;
+function endSeek() { seeking = false; clearTimeout(seekIdle); renderTransport(); }
+$("seek").oninput = () => {
+  seeking = true;
+  $("position").textContent = time(+$("seek").value);
+  clearTimeout(seekIdle);
+  seekIdle = setTimeout(endSeek, 3000);
+};
+for (const event of ["pointercancel", "touchcancel", "blur"]) $("seek").addEventListener(event, endSeek);
+window.addEventListener("blur", endSeek);
+document.addEventListener("visibilitychange", () => { if (document.hidden) endSeek(); });
 $("seek").onchange = () => {
   if (output === "pc") send("seek", +$("seek").value); else audio.currentTime = +$("seek").value / 1000;
   seeking = false;
+  clearTimeout(seekIdle);
 };
 let volumeTimer = null;
 $("volume").oninput = () => {

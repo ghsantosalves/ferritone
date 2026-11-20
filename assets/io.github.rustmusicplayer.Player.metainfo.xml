@@ -23,6 +23,11 @@
   <url type="bugtracker">https://github.com/ghsantosalves/ferritone/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.1.2" date="2026-11-20">
+      <description>
+        <p>Stops after several tracks in a row fail to play and keeps your place on the first one, avoids saving the library twice when playback starts, and makes the dock menu controls open Ferritone when it is not running.</p>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-11-20">
       <description>
         <p>Skips tracks that cannot be played instead of stopping, saves the playback position every 30 seconds, and adds playback controls to the dock icon menu.</p>

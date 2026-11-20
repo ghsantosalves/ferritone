@@ -160,10 +160,11 @@ try { output = localStorage.getItem("ferritone-output") === "phone" ? "phone" : 
 const local = { src: "queue", index: -1 };
 let w = words.en;
 
-function api(path) { return path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(token); }
+// This computer's browser needs no token; phones carry it from the QR code link.
+function api(path) { return token ? path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(token) : path; }
 function send(action, value) {
   const body = value === undefined ? { action } : { action, value };
-  return fetch(api("/api/command"), { method: "POST", body: JSON.stringify(body) })
+  return fetch(api("/api/command"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
     .then(() => setTimeout(refresh, 150)).catch(() => {});
 }
 function time(ms) {

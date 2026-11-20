@@ -74,7 +74,9 @@ Open **Phone remote** in the playback menu and turn on **Allow control from a ph
 
 At the top of the page, **Play on** chooses where the sound comes from. **Computer** controls Ferritone as usual. **Phone** pauses the computer and streams the music to the phone's browser, starting where the computer was, with the phone's lock-screen controls; switching back to **Computer** continues there from the phone's track and position. The phone plays the files as they are, so formats its browser cannot decode (FLAC on some older iPhones, for example) are skipped.
 
-The link contains a secret code, and Ferritone refuses requests without it, so other devices on the network cannot control playback. **New link** replaces the code and disconnects phones that have the old link. The remote stays on across restarts until you turn it off. Ferritone listens on port 47123, or on another free port if that one is taken; if the computer has a firewall, allow that port on your home network.
+While Ferritone is open, the same page is always available on the computer itself at <http://localhost:47123>, without a code and whether or not the phone remote is on. To open it by typing `ferritone` in Firefox, bookmark that address and give the bookmark the keyword `ferritone`; in Chrome, add a site search with the shortcut `ferritone` and the URL `http://localhost:47123/#%s`, then type `ferritone` and press Tab.
+
+Until you turn on the phone remote, Ferritone listens only on the computer itself. Once it is on, it also listens on the network, and requests from other devices must carry the secret code in the QR code link, so other devices cannot control playback. **New link** replaces the code and disconnects phones that have the old link. The remote stays on across restarts until you turn it off. The page loads nothing from the internet, and Ferritone refuses requests that other websites open in your browser try to send to it. It listens on port 47123, or on another free port if that one is taken; if the computer has a firewall, allow that port on your home network.
 
 ## Desktop media controls
 

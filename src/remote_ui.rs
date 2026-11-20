@@ -9,10 +9,8 @@ const LIST_SYNC_POLLS: u32 = 10;
 const MAX_REMOTE_QUEUE: usize = 1000;
 
 impl Player {
-    pub(crate) fn start_remote(&self) -> std::io::Result<()> {
-        if self.remote.borrow().is_some() {
-            return Ok(());
-        }
+    /// Starts the server for this computer only, or also for the network when `lan` is set.
+    pub(crate) fn restart_server(&self, lan: bool) -> std::io::Result<()> {
         let token = {
             let mut state = self.state.borrow_mut();
             if state.remote_token.is_empty() {
@@ -20,10 +18,13 @@ impl Player {
             }
             state.remote_token.clone()
         };
+        // Stop the old server first so the new one can take the same port.
+        self.remote.replace(None);
         let server = Server::start(
             token,
             self.remote_shared.clone(),
             self.remote_sender.clone(),
+            lan,
         )?;
         self.remote.replace(Some(server));
         self.remote_library_signature.replace(None);
@@ -31,27 +32,37 @@ impl Player {
         Ok(())
     }
 
-    pub(crate) fn stop_remote(&self) {
-        self.remote.replace(None);
+    /// Opens the server to the phone. On failure it stays available on this computer.
+    pub(crate) fn start_remote(&self) -> std::io::Result<()> {
+        let result = self.restart_server(true);
+        if result.is_err() {
+            let _ = self.restart_server(false);
+        }
+        result
     }
 
-    /// The link for the QR code, if the server runs and the computer is on a network.
+    /// Closes the server to the network, keeping it for this computer's browser.
+    pub(crate) fn stop_remote(&self) {
+        if let Err(error) = self.restart_server(false) {
+            eprintln!("Could not start the local remote page: {error}");
+            self.remote.replace(None);
+        }
+    }
+
+    fn remote_on_network(&self) -> bool {
+        self.remote.borrow().as_ref().is_some_and(Server::lan)
+    }
+
+    /// The link for the QR code, if the phone remote is on and the computer is on a network.
     pub(crate) fn remote_url(&self) -> Option<String> {
         let server = self.remote.borrow();
-        Some(
-            server
-                .as_ref()?
-                .url(remote::local_ip()?, &self.state.borrow().remote_token),
-        )
+        let server = server.as_ref().filter(|server| server.lan())?;
+        Some(server.url(remote::local_ip()?, &self.state.borrow().remote_token))
     }
 
-    /// The link for opening the remote page in this computer's own browser.
+    /// The address for this computer's own browser, which needs no token.
     pub(crate) fn remote_local_url(&self) -> Option<String> {
-        let server = self.remote.borrow();
-        Some(server.as_ref()?.url(
-            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
-            &self.state.borrow().remote_token,
-        ))
+        Some(self.remote.borrow().as_ref()?.local_url())
     }
 
     /// Called from `poll`: applies phone commands and refreshes what the phone shows.
@@ -295,7 +306,7 @@ impl Player {
         label.set_hexpand(true);
         let switch = gtk::Switch::new();
         switch.set_valign(gtk::Align::Center);
-        switch.set_active(self.remote.borrow().is_some());
+        switch.set_active(self.remote_on_network());
         switch.update_property(&[gtk::accessible::Property::Label(self.text(
             "Allow control from a phone",
             "Permitir controle pelo celular",
@@ -325,13 +336,6 @@ impl Player {
                     label.add_css_class("dim-label");
                     label
                 };
-                if player.remote.borrow().is_none() {
-                    details.append(&hint(player.text(
-                        "When this is on, a phone on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser.",
-                        "Com isto ligado, um celular na mesma rede Wi-Fi pode tocar, pausar, trocar de faixa e escolher playlists pelo navegador.",
-                    )));
-                    return;
-                }
                 let open_here = button(
                     player.text("Open on this computer", "Abrir neste computador"),
                     &player,
@@ -349,13 +353,32 @@ impl Player {
                     "Open the remote page in this computer's browser",
                     "Abre a página do controle no navegador deste computador",
                 )));
+                // This computer's browser can always use the page while Ferritone is open.
+                let local = gtk::Box::new(gtk::Orientation::Vertical, 8);
+                if let Some(address) = player.remote_local_url() {
+                    local.append(&hint(&player
+                        .text(
+                            "On this computer, open {} in any browser while Ferritone is open.",
+                            "Neste computador, abra {} em qualquer navegador enquanto o Ferritone estiver aberto.",
+                        )
+                        .replace("{}", address.trim_end_matches('/'))));
+                    open_here.set_halign(gtk::Align::Start);
+                    local.append(&open_here);
+                }
+                if !player.remote_on_network() {
+                    details.append(&hint(player.text(
+                        "When this is on, a phone on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser. Nothing goes through the internet.",
+                        "Com isto ligado, um celular na mesma rede Wi-Fi pode tocar, pausar, trocar de faixa e escolher playlists pelo navegador. Nada passa pela internet.",
+                    )));
+                    details.append(&local);
+                    return;
+                }
                 let Some(url) = player.remote_url() else {
                     details.append(&hint(player.text(
                         "This computer is not connected to a network. Connect it to Wi-Fi or a cable and open this window again.",
                         "Este computador não está conectado a uma rede. Conecte-o ao Wi-Fi ou a um cabo e abra esta janela de novo.",
                     )));
-                    open_here.set_halign(gtk::Align::Start);
-                    details.append(&open_here);
+                    details.append(&local);
                     return;
                 };
                 let code = remote::qr_area(&url, 240);
@@ -380,7 +403,6 @@ impl Player {
                     let details = details.downgrade();
                     move |player| {
                         // A new token disconnects every phone that has the old link.
-                        player.stop_remote();
                         player.state.borrow_mut().remote_token = remote::new_token();
                         player.save();
                         if let Err(error) = player.start_remote() {
@@ -395,10 +417,10 @@ impl Player {
                     "Disconnect phones that have the current link",
                     "Desconecta os celulares que têm o link atual",
                 )));
-                let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-                buttons.append(&open_here);
-                buttons.append(&reset);
-                details.append(&buttons);
+                reset.set_halign(gtk::Align::Start);
+                details.append(&reset);
+                details.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+                details.append(&local);
             }
         };
         fill_details();

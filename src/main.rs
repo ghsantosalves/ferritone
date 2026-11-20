@@ -889,10 +889,14 @@ fn build(app: &gtk::Application) {
     player.update_transport();
     player.rescan_library();
     player.start_listen_retries();
+    // The remote page is always available to this computer's browser; the network only when
+    // the phone remote is on.
     if player.state.borrow().remote_enabled {
         if let Err(error) = player.start_remote() {
             eprintln!("Could not start the phone remote: {error}");
         }
+    } else {
+        player.stop_remote();
     }
     if let Some(error) = load_error {
         eprintln!("Could not read library: {error}");

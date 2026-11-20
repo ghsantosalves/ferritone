@@ -1,8 +1,9 @@
 //! Control playback from a phone's browser on the same network.
 //!
-//! A small HTTP server serves one page and a JSON API. Every request must carry the secret token
-//! from the link shown as a QR code, so other devices on the network cannot control the player.
-//! The server runs only while the user has turned remote control on.
+//! A small HTTP server serves one page and a JSON API. While Ferritone runs it listens on this
+//! computer only, where the page opens without a token at http://localhost:47123. When the user
+//! turns the phone remote on it also listens on the network, and requests from other devices must
+//! carry the secret token from the link shown as a QR code. Nothing is sent to the internet.
 
 use std::{
     fs,
@@ -243,26 +244,73 @@ fn image_type(bytes: &[u8]) -> &'static str {
     }
 }
 
+/// One parsed HTTP request.
+#[derive(Default)]
+pub struct Request<'a> {
+    pub method: &'a str,
+    pub target: &'a str,
+    pub range: Option<&'a str>,
+    pub content_type: Option<&'a str>,
+    pub body: &'a [u8],
+    /// Sent by this computer's own browser from the page itself or a typed address,
+    /// so it needs no token.
+    pub local: bool,
+}
+
+/// Names this computer's browser may use for the page without a token. Checking the Host header
+/// stops other websites from reaching the server through DNS rebinding.
+fn local_host(host: &str) -> bool {
+    let name = match host.rsplit_once(':') {
+        Some((name, port)) if !name.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) => name,
+        _ => host,
+    };
+    matches!(
+        name.to_ascii_lowercase().as_str(),
+        "localhost" | "127.0.0.1" | "[::1]" | "ferritone"
+    )
+}
+
+/// Whether a request comes from this computer's browser and not from another website.
+pub fn trusted_local(
+    peer_is_loopback: bool,
+    host: Option<&str>,
+    origin: Option<&str>,
+    fetch_site: Option<&str>,
+) -> bool {
+    let Some(host) = host.filter(|host| peer_is_loopback && local_host(host)) else {
+        return false;
+    };
+    // Browsers mark requests that other sites trigger; only typed addresses and the page's own
+    // requests are trusted.
+    let same_site = matches!(fetch_site, None | Some("none" | "same-origin"));
+    let same_origin = origin.is_none_or(|origin| {
+        origin
+            .strip_prefix("http://")
+            .is_some_and(|origin_host| origin_host.eq_ignore_ascii_case(host))
+    });
+    same_site && same_origin
+}
+
 /// Answers one request. Kept free of socket I/O so it can be tested.
-#[allow(clippy::too_many_arguments)]
 pub fn respond(
-    method: &str,
-    target: &str,
-    range: Option<&str>,
-    body: &[u8],
+    request: &Request,
     token: &str,
     shared: &Shared,
     commands: &mpsc::Sender<Command>,
 ) -> Response {
-    let (path, query) = target.split_once('?').unwrap_or((target, ""));
+    let (path, query) = request
+        .target
+        .split_once('?')
+        .unwrap_or((request.target, ""));
     let supplied = param(query, "t").unwrap_or("");
-    if !tokens_match(supplied, token) {
+    if !request.local && !tokens_match(supplied, token) {
         return Response::text(
             "403 Forbidden",
             "Scan the QR code in Ferritone again to get a new link.",
         );
     }
-    match (method, path) {
+    let range = request.range;
+    match (request.method, path) {
         ("GET", "/") => Response::new("200 OK", "text/html; charset=utf-8", PAGE),
         ("GET", "/api/state") => match shared.snapshot.lock() {
             Ok(snapshot) => Response::json(&*snapshot),
@@ -286,7 +334,16 @@ pub fn respond(
                 None => Response::text("404 Not Found", "No cover"),
             }
         }
-        ("POST", "/api/command") => match serde_json::from_slice::<Command>(body) {
+        // Websites cannot send JSON to another site without the browser asking first,
+        // so requiring it blocks forged commands.
+        ("POST", "/api/command")
+            if !request
+                .content_type
+                .is_some_and(|value| value.starts_with("application/json")) =>
+        {
+            Response::text("415 Unsupported Media Type", "Send JSON")
+        }
+        ("POST", "/api/command") => match serde_json::from_slice::<Command>(request.body) {
             Ok(command) => {
                 let _ = commands.send(command);
                 Response::new("204 No Content", "text/plain", Vec::new())
@@ -333,6 +390,8 @@ pub fn local_ip() -> Option<IpAddr> {
 /// The running server; dropping it stops accepting connections.
 pub struct Server {
     port: u16,
+    /// Whether other devices on the network can connect, not only this computer.
+    lan: bool,
     stop: Arc<AtomicBool>,
 }
 
@@ -341,9 +400,15 @@ impl Server {
         token: String,
         shared: Arc<Shared>,
         commands: mpsc::Sender<Command>,
+        lan: bool,
     ) -> io::Result<Self> {
-        let listener = TcpListener::bind((Ipv4Addr::UNSPECIFIED, PREFERRED_PORT))
-            .or_else(|_| TcpListener::bind((Ipv4Addr::UNSPECIFIED, 0)))?;
+        let address = if lan {
+            Ipv4Addr::UNSPECIFIED
+        } else {
+            Ipv4Addr::LOCALHOST
+        };
+        let listener = TcpListener::bind((address, PREFERRED_PORT))
+            .or_else(|_| TcpListener::bind((address, 0)))?;
         let port = listener.local_addr()?.port();
         listener.set_nonblocking(true)?;
         let stop = Arc::new(AtomicBool::new(false));
@@ -368,11 +433,20 @@ impl Server {
                     }
                 }
             })?;
-        Ok(Self { port, stop })
+        Ok(Self { port, lan, stop })
+    }
+
+    pub fn lan(&self) -> bool {
+        self.lan
     }
 
     pub fn url(&self, ip: IpAddr, token: &str) -> String {
         format!("http://{}/?t={token}", SocketAddr::new(ip, self.port))
+    }
+
+    /// The address for this computer's own browser, which needs no token.
+    pub fn local_url(&self) -> String {
+        format!("http://localhost:{}/", self.port)
     }
 }
 
@@ -399,7 +473,11 @@ fn serve(
     let (Some(method), Some(target)) = (parts.next(), parts.next()) else {
         return Ok(());
     };
-    let (mut length, mut range) = (0, None);
+    let peer_is_loopback = stream
+        .peer_addr()
+        .is_ok_and(|address| address.ip().is_loopback());
+    let (mut length, mut range, mut host, mut origin, mut fetch_site, mut content_type) =
+        (0, None, None, None, None, None);
     loop {
         let mut line = String::new();
         let read = reader.read_line(&mut line)?;
@@ -412,6 +490,14 @@ fn serve(
                 length = value.trim().parse().unwrap_or(0);
             } else if name.eq_ignore_ascii_case("range") {
                 range = Some(value.trim().to_owned());
+            } else if name.eq_ignore_ascii_case("host") {
+                host = Some(value.trim().to_owned());
+            } else if name.eq_ignore_ascii_case("origin") {
+                origin = Some(value.trim().to_owned());
+            } else if name.eq_ignore_ascii_case("sec-fetch-site") {
+                fetch_site = Some(value.trim().to_ascii_lowercase());
+            } else if name.eq_ignore_ascii_case("content-type") {
+                content_type = Some(value.trim().to_ascii_lowercase());
             }
         }
     }
@@ -423,10 +509,19 @@ fn serve(
     write_response(
         stream,
         respond(
-            method,
-            target,
-            range.as_deref(),
-            &body,
+            &Request {
+                method,
+                target,
+                range: range.as_deref(),
+                content_type: content_type.as_deref(),
+                body: &body,
+                local: trusted_local(
+                    peer_is_loopback,
+                    host.as_deref(),
+                    origin.as_deref(),
+                    fetch_site.as_deref(),
+                ),
+            },
             token,
             shared,
             commands,
@@ -531,15 +626,15 @@ mod tests {
         body: &str,
     ) -> (Response, mpsc::Receiver<Command>) {
         let (sender, receiver) = mpsc::channel();
-        let response = respond(
+        let request = Request {
             method,
             target,
             range,
-            body.as_bytes(),
-            "secret",
-            shared,
-            &sender,
-        );
+            content_type: Some("application/json"),
+            body: body.as_bytes(),
+            local: false,
+        };
+        let response = respond(&request, "secret", shared, &sender);
         (response, receiver)
     }
 
@@ -698,7 +793,7 @@ mod tests {
         let shared = Arc::new(Shared::default());
         *shared.queue_paths.lock().unwrap() = vec![track];
         let (sender, receiver) = mpsc::channel();
-        let server = Server::start("abc".into(), shared, sender).unwrap();
+        let server = Server::start("abc".into(), shared, sender, false).unwrap();
 
         let mut stream = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
         write!(
@@ -717,7 +812,7 @@ mod tests {
         let body = r#"{"action":"next"}"#;
         write!(
             stream,
-            "POST /api/command?t=abc HTTP/1.1\r\nContent-Length: {}\r\n\r\n{body}",
+            "POST /api/command?t=abc HTTP/1.1\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
             body.len()
         )
         .unwrap();
@@ -728,6 +823,86 @@ mod tests {
             receiver.recv_timeout(Duration::from_secs(2)).unwrap(),
             Command::Next
         );
+    }
+
+    #[test]
+    fn only_this_computers_browser_skips_the_token() {
+        let local = |peer, host, origin, site| trusted_local(peer, host, origin, site);
+        assert!(local(true, Some("localhost:47123"), None, None));
+        assert!(local(true, Some("ferritone:47123"), None, Some("none")));
+        assert!(local(
+            true,
+            Some("127.0.0.1:47123"),
+            Some("http://127.0.0.1:47123"),
+            Some("same-origin")
+        ));
+        // Another device on the network.
+        assert!(!local(false, Some("localhost:47123"), None, None));
+        // A website that rebinds its own name to 127.0.0.1.
+        assert!(!local(true, Some("evil.example:47123"), None, None));
+        // A website that sends requests to localhost from the browser.
+        assert!(!local(
+            true,
+            Some("localhost:47123"),
+            Some("https://evil.example"),
+            Some("cross-site")
+        ));
+        assert!(!local(
+            true,
+            Some("localhost:47123"),
+            None,
+            Some("cross-site")
+        ));
+        assert!(!local(true, None, None, None));
+    }
+
+    #[test]
+    fn commands_must_be_json_even_from_this_computer() {
+        let shared = Shared::default();
+        let (sender, receiver) = mpsc::channel();
+        let forged = Request {
+            method: "POST",
+            target: "/api/command",
+            content_type: Some("text/plain"),
+            body: br#"{"action":"next"}"#,
+            local: true,
+            ..Request::default()
+        };
+        assert_eq!(
+            respond(&forged, "secret", &shared, &sender).status,
+            "415 Unsupported Media Type"
+        );
+        assert!(receiver.try_recv().is_err());
+        let page = Request {
+            content_type: Some("application/json"),
+            ..forged
+        };
+        assert_eq!(
+            respond(&page, "secret", &shared, &sender).status,
+            "204 No Content"
+        );
+        assert_eq!(receiver.try_recv().unwrap(), Command::Next);
+    }
+
+    #[test]
+    fn the_server_listens_only_on_this_computer_until_the_remote_is_on() {
+        let shared = Arc::new(Shared::default());
+        let (sender, _receiver) = mpsc::channel();
+        let server = Server::start("abc".into(), shared, sender, false).unwrap();
+        assert!(!server.lan());
+        let mut stream = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
+        write!(
+            stream,
+            "GET / HTTP/1.1\r\nHost: localhost:{}\r\n\r\n",
+            server.port
+        )
+        .unwrap();
+        let mut reply = String::new();
+        stream.read_to_string(&mut reply).unwrap();
+        assert!(reply.starts_with("HTTP/1.1 200"), "{reply}");
+        if let Some(ip) = local_ip() {
+            assert!(TcpStream::connect((ip, server.port)).is_err());
+        }
     }
 
     #[test]

@@ -21,6 +21,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     rc::Rc,
+    sync::{Arc, Mutex},
     time::{Duration, Instant},
 };
 
@@ -140,6 +141,8 @@ struct Player {
     failures: RefCell<playback::Failures>,
     /// When the playback position is next due to be saved while playing.
     autosave: RefCell<playback::Autosave>,
+    /// The next track, handed to GStreamer before the current one ends.
+    handoff: Arc<Mutex<playback::Handoff>>,
 }
 
 fn main() -> glib::ExitCode {
@@ -185,6 +188,16 @@ fn build(app: &gtk::Application) {
     // Keep video and subtitle windows out of the audio player.
     pipeline.set_property_from_str("flags", "audio");
     pipeline.set_property("volume", 0.7f64);
+    // Queue the next file before the current one ends so tracks follow each other without a gap.
+    let handoff = Arc::new(Mutex::new(playback::Handoff::default()));
+    let shared = handoff.clone();
+    pipeline.connect("about-to-finish", false, move |values| {
+        let next = shared.lock().ok().and_then(|mut handoff| handoff.take());
+        if let (Some(track), Ok(playbin)) = (next, values[0].get::<gst::Element>()) {
+            playbin.set_property("uri", gio::File::for_path(&track).uri().as_str());
+        }
+        None
+    });
 
     let path = data_path();
     let (mut state, storage, load_error) = match Library::load(&path) {
@@ -378,6 +391,7 @@ fn build(app: &gtk::Application) {
         importing: Cell::new(false),
         failures: RefCell::default(),
         autosave: RefCell::new(playback::Autosave::new(Instant::now())),
+        handoff,
     });
 
     let top = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -3723,6 +3737,7 @@ impl Player {
         let Some(track) = track else { return };
         self.message("");
         self.failures.borrow_mut().started();
+        self.cancel_handoff();
         let _ = self.pipeline.set_state(gst::State::Null);
         if let Some(waveform) = &self.waveform {
             waveform.clear();
@@ -3921,6 +3936,8 @@ impl Player {
                     }
                     gst::MessageView::Error(error) => {
                         eprintln!("Playback error: {}", error.error());
+                        // A track queued without a gap may be the one that failed.
+                        self.follow_handoff();
                         let decision = {
                             let state = self.state.borrow();
                             let has_next = state.next_index(1, false).is_some();
@@ -3967,6 +3984,7 @@ impl Player {
                         // Later messages belong to the failed pipeline run.
                         break;
                     }
+                    gst::MessageView::StreamStart(..) => self.follow_handoff(),
                     gst::MessageView::AsyncDone(..) => {
                         let position = self.pending_seek.replace(0);
                         if position > 0 {
@@ -3984,6 +4002,7 @@ impl Player {
                 }
             }
         }
+        self.plan_handoff();
         self.update_position();
         self.update_transport();
         // Keep the resume point recent in case the session ends without closing the window.
@@ -3997,7 +4016,53 @@ impl Player {
         }
     }
 
+    fn plan_handoff(&self) {
+        let next = if self.active.get() {
+            let state = self.state.borrow();
+            state
+                .next_index(1, true)
+                .and_then(|index| Some((index, state.queue.get(index)?.clone())))
+        } else {
+            None
+        };
+        if let Ok(mut handoff) = self.handoff.lock() {
+            handoff.plan(next);
+        }
+    }
+
+    fn cancel_handoff(&self) {
+        if let Ok(mut handoff) = self.handoff.lock() {
+            handoff.cancel();
+        }
+    }
+
+    /// Catches up with a track that GStreamer moved to on its own.
+    fn follow_handoff(self: &Rc<Self>) {
+        let switched = self
+            .handoff
+            .lock()
+            .ok()
+            .and_then(|mut handoff| handoff.switched());
+        let Some((index, track)) = switched else { return };
+        let index = playback::resolve(&self.state.borrow().queue, index, &track);
+        let Some(index) = index else { return };
+        {
+            let mut state = self.state.borrow_mut();
+            state.current = index;
+            state.position_ms = 0;
+        }
+        self.pending_seek.set(0);
+        self.pending_seek_signal.set(false);
+        self.failures.borrow_mut().started();
+        self.load_current_track();
+        self.update_transport();
+        self.refresh_track_highlight();
+        self.refresh_playing_playlist();
+        self.save();
+    }
+
     fn stop(&self) {
+        self.cancel_handoff();
         let _ = self.pipeline.set_state(gst::State::Null);
         self.active.set(false);
         self.playing.set(false);

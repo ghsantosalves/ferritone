@@ -1,6 +1,9 @@
 //! Playback decisions that do not depend on GTK or GStreamer, so they can be tested.
 
-use std::time::{Duration, Instant};
+use std::{
+    path::{Path, PathBuf},
+    time::{Duration, Instant},
+};
 
 /// Stop skipping after this many tracks in a row fail, so a broken audio setup does not walk the queue.
 pub const MAX_SKIPS: usize = 5;
@@ -85,9 +88,94 @@ impl Autosave {
     }
 }
 
+/// Hands the next track to GStreamer before the current one ends, for playback without gaps.
+///
+/// The UI thread plans the next track; GStreamer's streaming thread takes it when the current
+/// track is about to finish; the UI thread then learns of the switch when the new stream starts.
+#[derive(Default)]
+pub struct Handoff {
+    next: Option<(usize, PathBuf)>,
+    handed_off: Option<(usize, PathBuf)>,
+}
+
+impl Handoff {
+    /// The track that should follow the current one, or `None` to let playback end.
+    pub fn plan(&mut self, next: Option<(usize, PathBuf)>) {
+        self.next = next;
+    }
+
+    /// Called from the streaming thread: returns the file to queue in the pipeline.
+    pub fn take(&mut self) -> Option<PathBuf> {
+        let next = self.next.take()?;
+        let path = next.1.clone();
+        self.handed_off = Some(next);
+        Some(path)
+    }
+
+    /// The track that GStreamer moved to on its own, if any, once its stream has started.
+    pub fn switched(&mut self) -> Option<(usize, PathBuf)> {
+        self.handed_off.take()
+    }
+
+    /// Playback was started or stopped by hand, so any planned or pending switch is void.
+    pub fn cancel(&mut self) {
+        self.next = None;
+        self.handed_off = None;
+    }
+}
+
+/// Finds the queue entry for a track that was handed off, even if the queue changed since.
+pub fn resolve(queue: &[PathBuf], index: usize, track: &Path) -> Option<usize> {
+    if queue.get(index).map(PathBuf::as_path) == Some(track) {
+        Some(index)
+    } else {
+        queue.iter().position(|entry| entry == track)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn handoff_reports_the_switch_once() {
+        let mut handoff = Handoff::default();
+        assert_eq!(handoff.take(), None);
+        handoff.plan(Some((3, PathBuf::from("next.flac"))));
+        assert_eq!(handoff.switched(), None);
+        assert_eq!(handoff.take(), Some(PathBuf::from("next.flac")));
+        // The UI keeps planning from the old track until it hears about the switch.
+        handoff.plan(Some((3, PathBuf::from("next.flac"))));
+        assert_eq!(handoff.switched(), Some((3, PathBuf::from("next.flac"))));
+        assert_eq!(handoff.switched(), None);
+    }
+
+    #[test]
+    fn starting_by_hand_voids_a_pending_switch() {
+        let mut handoff = Handoff::default();
+        handoff.plan(Some((1, PathBuf::from("b"))));
+        handoff.take();
+        handoff.cancel();
+        assert_eq!(handoff.switched(), None);
+        assert_eq!(handoff.take(), None);
+    }
+
+    #[test]
+    fn the_end_of_the_queue_hands_off_nothing() {
+        let mut handoff = Handoff::default();
+        handoff.plan(None);
+        assert_eq!(handoff.take(), None);
+        assert_eq!(handoff.switched(), None);
+    }
+
+    #[test]
+    fn resolve_follows_the_track_when_the_queue_changed() {
+        let queue: Vec<_> = ["a", "b", "c"].into_iter().map(PathBuf::from).collect();
+        assert_eq!(resolve(&queue, 1, Path::new("b")), Some(1));
+        // A row was removed above it between the handoff and the switch.
+        assert_eq!(resolve(&queue, 2, Path::new("b")), Some(1));
+        assert_eq!(resolve(&queue, 0, Path::new("gone")), None);
+    }
 
     /// Feeds failures one by one, like the player does, until it gives up.
     fn run(failures: &mut Failures, start: usize, queue_len: usize) -> (usize, OnError) {

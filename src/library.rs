@@ -473,11 +473,22 @@ impl Library {
     }
 
     pub fn load(path: &Path) -> io::Result<Self> {
-        match fs::read(path) {
-            Ok(bytes) => serde_json::from_slice(&bytes).map_err(io::Error::other),
-            Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(error) => Err(error),
+        let mut library: Self = match fs::read(path) {
+            Ok(bytes) => serde_json::from_slice(&bytes).map_err(io::Error::other)?,
+            Err(error) if error.kind() == io::ErrorKind::NotFound => Self::default(),
+            Err(error) => return Err(error),
+        };
+        // A resume point newer than the library; ignored if unreadable or for another track.
+        let resume = fs::read(resume_path(path))
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<ResumePoint>(&bytes).ok());
+        if let Some(resume) = resume {
+            if library.queue.get(resume.current) == Some(&resume.track) {
+                library.current = resume.current;
+                library.position_ms = resume.position_ms;
+            }
         }
+        Ok(library)
     }
 
     pub fn save(&self, path: &Path) -> io::Result<()> {
@@ -487,8 +498,44 @@ impl Library {
         serde_json::to_writer_pretty(file.as_file_mut(), self)?;
         file.as_file().sync_all()?;
         file.persist(path).map_err(|error| error.error)?;
+        // The library now holds the latest position, so the resume point is stale.
+        match fs::remove_file(resume_path(path)) {
+            Err(error) if error.kind() != io::ErrorKind::NotFound => Err(error),
+            _ => Ok(()),
+        }
+    }
+
+    /// Saves only the playback position, which is much cheaper than `save` for a large library.
+    pub fn save_position(&self, path: &Path) -> io::Result<()> {
+        let Some(track) = self.queue.get(self.current) else {
+            return Ok(());
+        };
+        let directory = path.parent().ok_or(io::ErrorKind::InvalidInput)?;
+        fs::create_dir_all(directory)?;
+        let mut file = tempfile::NamedTempFile::new_in(directory)?;
+        serde_json::to_writer(
+            file.as_file_mut(),
+            &ResumePoint {
+                track: track.clone(),
+                current: self.current,
+                position_ms: self.position_ms,
+            },
+        )?;
+        // No fsync: losing the latest few seconds of position after a crash is harmless.
+        file.persist(resume_path(path)).map_err(|error| error.error)?;
         Ok(())
     }
+}
+
+#[derive(Deserialize, Serialize)]
+struct ResumePoint {
+    track: PathBuf,
+    current: usize,
+    position_ms: u64,
+}
+
+fn resume_path(library: &Path) -> PathBuf {
+    library.with_file_name("position.json")
 }
 
 pub fn data_path() -> PathBuf {
@@ -666,6 +713,50 @@ mod tests {
         assert_eq!(state.queue[state.current], PathBuf::from("added"));
         assert_eq!(state.position_ms, 0);
         assert_eq!(state.shuffle_order, [1, 0]);
+    }
+
+    #[test]
+    fn resume_point_restores_the_position_until_the_library_is_saved() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("library.json");
+        let mut library = Library {
+            queue: ["first", "second"].into_iter().map(PathBuf::from).collect(),
+            current: 1,
+            position_ms: 1000,
+            ..Library::default()
+        };
+        library.save(&path).unwrap();
+        library.position_ms = 61_000;
+        library.save_position(&path).unwrap();
+        let loaded = Library::load(&path).unwrap();
+        assert_eq!((loaded.current, loaded.position_ms), (1, 61_000));
+
+        // A full save is newer than the resume point and replaces it.
+        library.position_ms = 75_000;
+        library.save(&path).unwrap();
+        assert!(!resume_path(&path).exists());
+        assert_eq!(Library::load(&path).unwrap().position_ms, 75_000);
+    }
+
+    #[test]
+    fn resume_point_for_another_track_is_ignored() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("library.json");
+        let mut library = Library {
+            queue: ["first", "second"].into_iter().map(PathBuf::from).collect(),
+            ..Library::default()
+        };
+        library.save(&path).unwrap();
+        library.position_ms = 5000;
+        library.save_position(&path).unwrap();
+        library.queue = vec![PathBuf::from("other")];
+        library.position_ms = 0;
+        fs::write(&path, serde_json::to_vec(&library).unwrap()).unwrap();
+        let loaded = Library::load(&path).unwrap();
+        assert_eq!((loaded.current, loaded.position_ms), (0, 0));
+
+        fs::write(resume_path(&path), b"not json").unwrap();
+        assert!(Library::load(&path).is_ok());
     }
 
     #[test]

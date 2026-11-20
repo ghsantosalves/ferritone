@@ -960,6 +960,15 @@ impl Player {
         }
     }
 
+    fn save_position(&self) {
+        self.autosave.borrow_mut().saved(Instant::now());
+        if let Some(path) = &self.storage {
+            if let Err(error) = self.state.borrow().save_position(path) {
+                eprintln!("Could not save the playback position: {error}");
+            }
+        }
+    }
+
     fn show(self: &Rc<Self>, page: Page) {
         self.close_track_menu();
         let previous = self.page.replace(page);
@@ -3979,7 +3988,7 @@ impl Player {
         self.update_transport();
         // Keep the resume point recent in case the session ends without closing the window.
         if self.autosave.borrow().due(Instant::now(), self.playing.get()) {
-            self.save();
+            self.save_position();
         }
         if self.window.is_mapped() {
             self.fit_transport();

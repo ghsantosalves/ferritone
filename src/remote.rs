@@ -62,6 +62,8 @@ pub struct Position {
 pub struct Entry {
     pub title: String,
     pub artist: String,
+    pub album: String,
+    pub duration_ms: u64,
 }
 
 #[derive(Clone, Default, PartialEq, Serialize)]
@@ -69,6 +71,7 @@ pub struct LibraryEntry {
     pub title: String,
     pub artist: String,
     pub album: String,
+    pub duration_ms: u64,
 }
 
 /// The whole library, sent to the phone only when it asks, since it can be large.
@@ -147,6 +150,8 @@ pub struct Response {
     pub status: &'static str,
     pub content_type: &'static str,
     pub body: Body,
+    /// Lets the browser keep the response; only for URLs that name their content.
+    pub cacheable: bool,
 }
 
 impl Response {
@@ -155,6 +160,7 @@ impl Response {
             status,
             content_type,
             body: Body::Bytes(body.into()),
+            cacheable: false,
         }
     }
 
@@ -252,6 +258,7 @@ fn stream_file(path: PathBuf, range: Option<&str>) -> Response {
             end,
             total,
         },
+        cacheable: false,
     }
 }
 
@@ -354,7 +361,12 @@ pub fn respond(
         ("GET", "/api/cover") => {
             match requested_file(query, shared).and_then(|path| crate::metadata::read_cover(&path))
             {
-                Some(image) => Response::new("200 OK", image_type(&image), image),
+                // The page puts the track's title, artist, and album in the cover URL, so a URL
+                // always means the same image and the browser may keep it.
+                Some(image) => Response {
+                    cacheable: param(query, "k").is_some(),
+                    ..Response::new("200 OK", image_type(&image), image)
+                },
                 None => Response::text("404 Not Found", "No cover"),
             }
         }
@@ -569,9 +581,15 @@ fn write_response(mut stream: TcpStream, response: Response) -> io::Result<()> {
     };
     write!(
         stream,
-        "HTTP/1.1 {}\r\nContent-Type: {}\r\nContent-Length: {length}\r\n{extra}Cache-Control: no-store\r\n\
+        "HTTP/1.1 {}\r\nContent-Type: {}\r\nContent-Length: {length}\r\n{extra}Cache-Control: {}\r\n\
          X-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n\r\n",
-        response.status, response.content_type,
+        response.status,
+        response.content_type,
+        if response.cacheable {
+            "private, max-age=86400"
+        } else {
+            "no-store"
+        },
     )?;
     match response.body {
         Body::Bytes(bytes) => stream.write_all(&bytes)?,
@@ -801,6 +819,7 @@ mod tests {
                 title: "Patina".into(),
                 artist: "Ines Varga".into(),
                 album: "Copper Hours".into(),
+                duration_ms: 201_000,
             }];
         }
         let (response, _) = call_with(&shared, "GET", "/api/library?t=secret", None, "");

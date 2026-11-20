@@ -192,6 +192,7 @@ impl Player {
                     album: metadata
                         .and_then(|info| info.album.clone())
                         .unwrap_or_default(),
+                    duration_ms: metadata.and_then(|info| info.duration_ms).unwrap_or(0),
                 }
             })
             .collect();
@@ -223,6 +224,10 @@ impl Player {
                 artist: metadata
                     .and_then(|info| info.artist.clone())
                     .unwrap_or_default(),
+                album: metadata
+                    .and_then(|info| info.album.clone())
+                    .unwrap_or_default(),
+                duration_ms: metadata.and_then(|info| info.duration_ms).unwrap_or(0),
             }
         };
         let track = state.queue.get(state.current);

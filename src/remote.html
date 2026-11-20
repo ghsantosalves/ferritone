@@ -10,77 +10,140 @@
   :root {
     --bg: #1e1d1b; --surface: #2a2926; --raised: #34332f; --text: #f2efe9;
     --muted: #a8a39a; --accent: #ee853f; --accent-text: #1e1d1b; --line: #3d3b37;
+    --soft: color-mix(in srgb, var(--accent) 14%, transparent);
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, Cantarell, "Noto Sans", sans-serif;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; background: var(--bg); color: var(--text); }
   body {
-    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Cantarell, sans-serif;
-    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
-    max-width: 520px; margin: 0 auto;
+    font: 16px/1.45 var(--font); -webkit-font-smoothing: antialiased;
+    padding: max(14px, env(safe-area-inset-top)) 18px max(24px, env(safe-area-inset-bottom));
+    max-width: 540px; margin: 0 auto; position: relative; overflow-x: hidden;
+    /* Its own layer, so the blurred cover sits above the page color and below the content. */
+    isolation: isolate;
   }
-  .output { margin-bottom: 16px; }
-  .output > span { display: block; color: var(--muted); font-size: .8rem; font-weight: 600;
-    text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px 4px; }
-  .segmented { display: flex; gap: 4px; background: var(--surface); border-radius: 999px; padding: 4px; }
-  .segmented button { flex: 1 1 0; min-width: 0; width: auto; height: 38px; padding: 0 10px; border-radius: 999px;
-    color: var(--muted); font: 600 15px/1 system-ui, -apple-system, "Segoe UI", Roboto, Cantarell, sans-serif; display: flex; align-items: center;
-    justify-content: center; gap: 7px; white-space: nowrap; overflow: hidden; }
+  button { border: 0; background: none; color: inherit; padding: 0; cursor: pointer; font: inherit; }
+  svg { fill: currentColor; }
+
+  /* The album cover, blurred, tints the top of the page. */
+  .backdrop { position: absolute; inset: 0 0 auto 0; height: 640px; overflow: hidden; z-index: -1;
+    pointer-events: none; -webkit-mask-image: linear-gradient(#000 35%, transparent);
+    mask-image: linear-gradient(#000 35%, transparent); }
+  .backdrop img { width: 100%; height: 100%; object-fit: cover; filter: blur(60px) saturate(1.4);
+    transform: scale(1.35); opacity: 0; transition: opacity .6s; }
+  .backdrop img.shown { opacity: .42; }
+
+  .output { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  .output > span { color: var(--muted); font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .08em; white-space: nowrap; }
+  .segmented { display: flex; gap: 2px; flex: 1; min-width: 0; padding: 3px; border-radius: 999px;
+    background: color-mix(in srgb, var(--surface) 82%, transparent); backdrop-filter: blur(12px); }
+  .segmented button { flex: 1 1 0; min-width: 0; height: 34px; padding: 0 8px; border-radius: 999px;
+    color: var(--muted); font-size: 14px; font-weight: 650; display: flex; align-items: center;
+    justify-content: center; gap: 6px; white-space: nowrap; transition: background .2s, color .2s; }
   .segmented button span { overflow: hidden; text-overflow: ellipsis; }
-  .segmented button svg { width: 18px; height: 18px; flex: none; }
-  .segmented button.on { background: var(--accent); color: var(--accent-text); }
-  .now { display: flex; flex-direction: column; align-items: center; gap: 14px; }
-  .cover {
-    width: min(68vw, 290px); aspect-ratio: 1; border-radius: 12px; background: var(--surface);
-    display: grid; place-items: center; overflow: hidden; box-shadow: 0 8px 28px rgb(0 0 0 / 35%);
-  }
+  .segmented button svg { width: 16px; height: 16px; flex: none; }
+  .segmented button.on { background: var(--accent); color: var(--accent-text);
+    box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+  .now { display: flex; flex-direction: column; align-items: center; }
+  .cover { width: min(76vw, 320px); aspect-ratio: 1; border-radius: 20px; background: var(--surface);
+    display: grid; place-items: center; overflow: hidden;
+    box-shadow: 0 24px 60px rgb(0 0 0 / 32%), 0 2px 8px rgb(0 0 0 / 18%); }
   .cover img { width: 100%; height: 100%; object-fit: cover; display: none; grid-area: 1 / 1; }
-  .cover svg { width: 38%; fill: var(--muted); grid-area: 1 / 1; }
-  .meta { text-align: center; width: 100%; min-height: 3.2em; }
-  .title { font-size: 1.25rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .artist { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .time { display: flex; justify-content: space-between; color: var(--muted); font-size: .85rem;
-    font-variant-numeric: tabular-nums; width: 100%; margin-top: -6px; }
-  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
-  .controls { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 340px; }
-  button {
-    border: 0; background: none; color: var(--text); padding: 0; cursor: pointer;
-    display: grid; place-items: center; border-radius: 999px; width: 52px; height: 52px;
-  }
-  button svg { width: 26px; height: 26px; fill: currentColor; }
-  button:active { background: var(--raised); }
-  button.play { width: 72px; height: 72px; background: var(--accent); color: var(--accent-text); }
-  button.play svg { width: 34px; height: 34px; }
-  button.play:active { background: var(--accent); filter: brightness(.9); }
-  button.toggle { color: var(--muted); }
-  button.toggle.on { color: var(--accent); }
-  button:disabled { opacity: .35; }
+  .cover svg { width: 34%; color: var(--muted); grid-area: 1 / 1; }
+  .meta { text-align: center; width: 100%; margin: 24px 0 18px; min-height: 3.4em; }
+  .title { font-size: 1.42rem; font-weight: 750; letter-spacing: -.01em; line-height: 1.25;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .artist { color: var(--muted); margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  /* Thin bars filled up to the value with the accent color. */
+  input[type=range] { --fill: 0%; -webkit-appearance: none; appearance: none; width: 100%; height: 22px;
+    margin: 0; background: transparent; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 5px; border-radius: 999px;
+    background: linear-gradient(to right, var(--accent) var(--fill), color-mix(in srgb, var(--text) 16%, transparent) var(--fill)); }
+  input[type=range]::-moz-range-track { height: 5px; border-radius: 999px;
+    background: linear-gradient(to right, var(--accent) var(--fill), color-mix(in srgb, var(--text) 16%, transparent) var(--fill)); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; margin-top: -5px;
+    border-radius: 50%; background: var(--accent); border: 0;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); transition: transform .15s; }
+  input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--accent); border: 0;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+  input[type=range]:active::-webkit-slider-thumb { transform: scale(1.25); }
+  .time { display: flex; justify-content: space-between; width: 100%; margin-top: 2px; color: var(--muted);
+    font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 100%;
+    max-width: 360px; margin: 14px 0 12px; }
+  .controls button { width: 50px; height: 50px; border-radius: 50%; display: grid; place-items: center;
+    transition: background .15s, transform .1s; }
+  .controls button:active { background: color-mix(in srgb, var(--text) 10%, transparent); transform: scale(.94); }
+  .controls svg { width: 26px; height: 26px; }
+  .controls .play { width: 74px; height: 74px; background: var(--accent); color: var(--accent-text);
+    box-shadow: 0 12px 30px color-mix(in srgb, var(--accent) 40%, transparent); }
+  .controls .play:active { background: var(--accent); }
+  .controls .play svg { width: 34px; height: 34px; }
+  .controls .toggle { color: var(--muted); }
+  .controls .toggle.on { color: var(--accent); }
+  .controls button:disabled { opacity: .3; }
   .badge { position: relative; }
-  .badge span { position: absolute; right: 9px; bottom: 9px; font-size: 10px; font-weight: 800; }
-  .volume { display: flex; align-items: center; gap: 10px; width: 100%; }
-  .volume svg { width: 22px; height: 22px; fill: var(--muted); flex: none; }
-  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 8px; }
-  .tabs button { width: auto; height: 38px; padding: 0 16px; background: var(--surface);
-    color: var(--muted); font: inherit; font-weight: 600; flex: none; }
+  .badge span { position: absolute; right: 11px; bottom: 10px; font-size: 9px; font-weight: 800; }
+  .volume { display: flex; align-items: center; gap: 12px; width: 100%; color: var(--muted); }
+  .volume svg { width: 20px; height: 20px; flex: none; }
+
+  .tabs { display: flex; gap: 4px; margin: 30px 0 14px; padding: 4px; border-radius: 16px; background: var(--surface); }
+  .tabs button { flex: 1 1 0; min-width: 0; padding: 8px 4px 7px; border-radius: 12px; color: var(--muted);
+    display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: .74rem; font-weight: 650;
+    line-height: 1.2; text-align: center; transition: background .2s, color .2s; }
+  .tabs button svg { width: 20px; height: 20px; }
   .tabs button.on { background: var(--raised); color: var(--text); }
-  .search { width: 100%; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
-    color: var(--text); font: inherit; padding: 0 14px; margin-bottom: 6px; display: none; }
-  .search::placeholder { color: var(--muted); }
-  ul { list-style: none; margin: 0; padding: 0; }
-  li { display: flex; align-items: center; gap: 12px; padding: 11px 10px; border-radius: 8px; cursor: pointer; }
-  li:active { background: var(--raised); }
-  li + li { border-top: 1px solid var(--line); }
-  li .n { color: var(--muted); width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; flex: none; }
-  li .t { min-width: 0; flex: 1; }
-  li .t div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  li .t .s { color: var(--muted); font-size: .85rem; }
-  li.current .t div:first-child, li.current .n { color: var(--accent); font-weight: 700; }
-  li.more { justify-content: center; color: var(--accent); font-weight: 600; }
-  .empty, .notice { color: var(--muted); text-align: center; padding: 18px; }
-  .notice { display: none; background: var(--surface); border-radius: 8px; margin-bottom: 12px; padding: 12px; }
+  .tabs button.on svg { color: var(--accent); }
+  .search { position: relative; margin-bottom: 10px; display: none; }
+  .search svg { position: absolute; left: 14px; top: 50%; width: 18px; height: 18px; translate: 0 -50%; color: var(--muted); }
+  .search input { width: 100%; height: 44px; border-radius: 14px; border: 1px solid transparent; background: var(--surface);
+    color: var(--text); font: inherit; padding: 0 14px 0 42px; outline: none; transition: border-color .2s; }
+  .search input:focus { border-color: color-mix(in srgb, var(--accent) 60%, transparent); }
+  .search input::placeholder { color: var(--muted); }
+
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  li.track { display: grid; grid-template-columns: 48px 1fr auto; align-items: center; gap: 12px;
+    padding: 7px 10px 7px 7px; border-radius: 14px; cursor: pointer; transition: background .15s; }
+  li.track:active { background: color-mix(in srgb, var(--text) 8%, transparent); }
+  li.track.current { background: var(--soft); }
+  .thumb { position: relative; width: 48px; height: 48px; border-radius: 10px; overflow: hidden; display: grid;
+    place-items: center; background: linear-gradient(135deg, var(--raised), var(--surface)); color: var(--muted); }
+  .thumb > svg { width: 22px; height: 22px; }
+  .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity .25s; }
+  .thumb img.shown { opacity: 1; }
+  .thumb.list { background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 45%, var(--bg))); color: var(--accent-text); }
+  /* Three bars that bounce on the track that is playing. */
+  .bars { position: absolute; inset: 0; display: none; align-items: flex-end; justify-content: center; gap: 3px;
+    padding-bottom: 14px; background: rgb(0 0 0 / 45%); }
+  li.current .bars { display: flex; }
+  .bars i { width: 4px; height: 6px; border-radius: 2px; background: #fff; }
+  li.playing .bars i { animation: bounce .9s ease-in-out infinite; }
+  .bars i:nth-child(2) { animation-delay: -.3s; }
+  .bars i:nth-child(3) { animation-delay: -.6s; }
+  @keyframes bounce { 0%, 100% { height: 6px; } 50% { height: 18px; } }
+  .info { min-width: 0; }
+  .info b, .info span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .info b { font-weight: 600; font-size: .97rem; }
+  li.current .info b { color: var(--accent); }
+  .info span { color: var(--muted); font-size: .82rem; margin-top: 1px; }
+  .length { color: var(--muted); font-size: .8rem; font-variant-numeric: tabular-nums; }
+  .length svg { width: 20px; height: 20px; display: block; }
+  li.more { display: flex; justify-content: center; padding: 10px 0; }
+  li.more button { padding: 10px 20px; border-radius: 999px; background: var(--surface); color: var(--accent); font-weight: 650; }
+  li.empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 36px 16px;
+    color: var(--muted); text-align: center; }
+  li.empty svg { width: 36px; height: 36px; opacity: .5; }
+  .notice { display: none; background: var(--surface); border-radius: 14px; margin-bottom: 14px; padding: 12px 14px;
+    color: var(--muted); font-size: .9rem; text-align: center; }
   audio { display: none; }
 </style>
 </head>
 <body>
+<div class="backdrop"><img id="backdrop" alt=""></div>
 <div class="notice" id="notice"></div>
 <div class="output">
   <span id="play-on"></span>
@@ -108,16 +171,20 @@
     <button class="toggle badge" id="repeat"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg><span id="repeat-one"></span></button>
   </div>
   <div class="volume">
-    <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+    <svg viewBox="0 0 24 24"><path d="M7 9v6h4l5 5V4l-5 5H7z"/></svg>
     <input type="range" id="volume" min="0" max="100" value="70">
+    <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06A9 9 0 0 0 14 3.23z"/></svg>
   </div>
 </section>
 <div class="tabs">
-  <button id="tab-queue" class="on"></button>
-  <button id="tab-library"></button>
-  <button id="tab-playlists"></button>
+  <button id="tab-queue" class="on"><svg viewBox="0 0 24 24"><path d="M3 6h12v2H3zm0 4h12v2H3zm0 4h8v2H3zm14-4v8.18A3 3 0 1 0 19 21V12h3v-2z"/></svg><span></span></button>
+  <button id="tab-library"><svg viewBox="0 0 24 24"><path d="M4 6H2v14a2 2 0 0 0 2 2h14v-2H4zm16-4H8a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2zm-2 5h-3v5.5a2.5 2.5 0 1 1-2.5-2.5c.57 0 1.08.19 1.5.51V5h4z"/></svg><span></span></button>
+  <button id="tab-playlists"><svg viewBox="0 0 24 24"><path d="M15 6H3v2h12zm0 4H3v2h12zM3 16h8v-2H3zM17 6v8.18A3 3 0 0 0 16 14a3 3 0 1 0 3 3V8h3V6z"/></svg><span></span></button>
 </div>
-<input class="search" id="search" type="search" autocomplete="off">
+<div class="search" id="search-box">
+  <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 14 15.5l.27.28v.79l5 4.99L20.49 19zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+  <input id="search" type="search" autocomplete="off" enterkeyhint="search">
+</div>
 <ul id="list"></ul>
 <audio id="audio" preload="auto"></audio>
 <script>
@@ -153,6 +220,12 @@ const words = {
         unsupported: "Ce navigateur ne lit pas le format de ce fichier ; il a été ignoré.",
         blocked: "Touchez lecture pour démarrer le son sur cet appareil." },
 };
+const ICONS = {
+  note: "M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z",
+  list: "M15 6H3v2h12zm0 4H3v2h12zM3 16h8v-2H3zM17 6v8.18A3 3 0 0 0 16 14a3 3 0 1 0 3 3V8h3V6z",
+  play: "M8 5v14l11-7z",
+  search: "M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 14 15.5l.27.28v.79l5 4.99L20.49 19zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z",
+};
 const PAGE_SIZE = 200;
 const $ = id => document.getElementById(id);
 const audio = $("audio");
@@ -180,6 +253,23 @@ function fold(text) { return (text || "").normalize("NFD").replace(/[̀-ͯ]/g, "
 function notice(text) { $("notice").textContent = text || ""; $("notice").style.display = text ? "block" : "none"; }
 function localList() { return local.src === "library" ? library.tracks : (state ? state.queue : []); }
 function localEntry() { return localList()[local.index]; }
+function icon(path) {
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("viewBox", "0 0 24 24");
+  const shape = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  shape.setAttribute("d", path);
+  svg.append(shape);
+  return svg;
+}
+// A cover URL that names the track, so the browser can keep it and never shows a stale one.
+function coverFor(src, index, entry) {
+  const key = entry ? [entry.title, entry.artist, entry.album].join("\u0001") : "";
+  return api("/api/cover?src=" + src + "&i=" + index + "&k=" + encodeURIComponent(key));
+}
+function fill(range) {
+  const max = +range.max || 1;
+  range.style.setProperty("--fill", Math.min(100, Math.max(0, (+range.value / max) * 100)) + "%");
+}
 
 // --- Playing on this device ---------------------------------------------------------------
 function playLocal(src, index, positionMs) {
@@ -208,8 +298,8 @@ function stepLocal(offset, automatic) {
 audio.addEventListener("ended", () => stepLocal(1, true));
 audio.addEventListener("error", () => { if (audio.src && local.index >= 0) { notice(w.unsupported); stepLocal(1, true); } });
 audio.addEventListener("timeupdate", () => { if (output === "phone") renderTransport(); });
-audio.addEventListener("play", () => renderTransport());
-audio.addEventListener("pause", () => renderTransport());
+audio.addEventListener("play", () => { renderTransport(); listKey = ""; renderList(); });
+audio.addEventListener("pause", () => { renderTransport(); listKey = ""; renderList(); });
 
 function updateMediaSession() {
   if (!("mediaSession" in navigator)) return;
@@ -253,41 +343,71 @@ function setOutput(next) {
 
 // --- Drawing --------------------------------------------------------------------------
 function coverUrl() {
-  if (output === "phone") return api("/api/cover?src=" + local.src + "&i=" + local.index);
+  if (output === "phone") return coverFor(local.src, local.index, localEntry());
   // Asking for the current track, not a queue position, keeps the cover right right after the
   // computer switches to another album.
-  return api("/api/cover?src=current&k=" + encodeURIComponent(state.title + "\u0001" + state.album + "\u0001" + state.current));
+  return api("/api/cover?src=current&k=" + encodeURIComponent([state.title, state.artist, state.album, state.current].join("\u0001")));
 }
-function row(number, title, sub, current, onclick) {
+function trackRow(item, src, index, current, playing, onclick) {
   const li = document.createElement("li");
-  if (current) li.className = "current";
-  const n = document.createElement("span"); n.className = "n"; n.textContent = number;
-  const t = document.createElement("div"); t.className = "t";
-  const a = document.createElement("div"); a.textContent = title;
-  const b = document.createElement("div"); b.className = "s"; b.textContent = sub;
-  t.append(a, b); li.append(n, t); li.onclick = onclick;
+  li.className = "track" + (current ? " current" : "") + (current && playing ? " playing" : "");
+  const thumb = document.createElement("div"); thumb.className = "thumb";
+  thumb.append(icon(ICONS.note));
+  const img = document.createElement("img");
+  img.loading = "lazy"; img.decoding = "async"; img.alt = "";
+  img.onload = () => img.classList.add("shown");
+  img.onerror = () => img.remove();
+  img.src = coverFor(src, index, item);
+  const bars = document.createElement("div"); bars.className = "bars";
+  bars.append(document.createElement("i"), document.createElement("i"), document.createElement("i"));
+  thumb.append(img, bars);
+  const info = document.createElement("div"); info.className = "info";
+  const title = document.createElement("b"); title.textContent = item.title;
+  const sub = document.createElement("span"); sub.textContent = [item.artist, item.album].filter(Boolean).join(" · ");
+  info.append(title, sub);
+  const length = document.createElement("div"); length.className = "length";
+  length.textContent = item.duration_ms ? time(item.duration_ms) : "";
+  li.append(thumb, info, length);
+  li.onclick = onclick;
   return li;
 }
-function message(list, text) {
-  const li = document.createElement("li"); li.className = "empty"; li.textContent = text; list.append(li);
+function playlistRow(item, onclick) {
+  const li = document.createElement("li"); li.className = "track";
+  const thumb = document.createElement("div"); thumb.className = "thumb list"; thumb.append(icon(ICONS.list));
+  const info = document.createElement("div"); info.className = "info";
+  const title = document.createElement("b"); title.textContent = item.name;
+  const sub = document.createElement("span"); sub.textContent = w.tracks(item.tracks);
+  info.append(title, sub);
+  const action = document.createElement("div"); action.className = "length"; action.append(icon(ICONS.play));
+  li.append(thumb, info, action);
+  li.onclick = onclick;
+  return li;
+}
+function message(list, text, path) {
+  const li = document.createElement("li"); li.className = "empty";
+  li.append(icon(path || ICONS.note));
+  const label = document.createElement("div"); label.textContent = text;
+  li.append(label); list.append(li);
 }
 function currentIn(src) {
   if (output === "phone") return local.src === src ? local.index : -1;
   return src === "queue" ? state.current : -1;
 }
+function isPlaying() { return output === "phone" ? !audio.paused : state.playing; }
 function choose(src, index) {
   if (output === "phone") playLocal(src, index, 0);
   else send(src === "library" ? "play_library" : "play_queue", index);
 }
 function renderList() {
   const items = tab === "queue" ? state.queue : tab === "playlists" ? state.playlists : library.tracks;
-  const key = JSON.stringify([tab, output, local, state.current, query, shown, tab === "library" ? library.version : items]);
+  const key = JSON.stringify([tab, output, local, state.current, isPlaying(), query, shown, tab === "library" ? library.version : items]);
   if (key === listKey) return;
   listKey = key;
   const list = $("list"); list.replaceChildren();
+  const playing = isPlaying();
   if (tab === "playlists") {
-    if (!items.length) return message(list, w.emptyPlaylists);
-    items.forEach((item, i) => list.append(row(i + 1, item.name, w.tracks(item.tracks), false, () => {
+    if (!items.length) return message(list, w.emptyPlaylists, ICONS.list);
+    items.forEach((item, i) => list.append(playlistRow(item, () => {
       if (output === "phone") {
         // The computer swaps its queue for the playlist without playing it; the phone plays it.
         send("play_playlist", i).then(() => send("pause")).then(() => setTimeout(() =>
@@ -299,7 +419,7 @@ function renderList() {
   if (tab === "queue") {
     if (!items.length) return message(list, w.emptyQueue);
     const current = currentIn("queue");
-    items.forEach((item, i) => list.append(row(i + 1, item.title, item.artist, i === current, () => choose("queue", i))));
+    items.forEach((item, i) => list.append(trackRow(item, "queue", i, i === current, playing, () => choose("queue", i))));
     return;
   }
   if (libraryLoading && !items.length) return;
@@ -315,13 +435,14 @@ function renderList() {
     }
     matches++;
     if (matches > shown) break;
-    list.append(row(i + 1, item.title, [item.artist, item.album].filter(Boolean).join(" · "), i === current, () => choose("library", i)));
+    list.append(trackRow(item, "library", i, i === current, playing, () => choose("library", i)));
   }
-  if (!matches) message(list, w.noMatches);
+  if (!matches) message(list, w.noMatches, ICONS.search);
   else if (matches > shown) {
-    const li = document.createElement("li"); li.className = "more"; li.textContent = w.more;
-    li.onclick = () => { shown += PAGE_SIZE; renderList(); };
-    list.append(li);
+    const li = document.createElement("li"); li.className = "more";
+    const more = document.createElement("button"); more.textContent = w.more;
+    more.onclick = () => { shown += PAGE_SIZE; renderList(); };
+    li.append(more); list.append(li);
   }
 }
 function renderTransport() {
@@ -338,9 +459,13 @@ function renderTransport() {
     $("seek").max = max;
     $("seek").value = value;
     $("position").textContent = time(value);
+    fill($("seek"));
   }
   $("duration").textContent = time(duration);
-  if (!changingVolume) $("volume").value = Math.round((phone ? audio.volume : state.volume) * 100);
+  if (!changingVolume) {
+    $("volume").value = Math.round((phone ? audio.volume : state.volume) * 100);
+    fill($("volume"));
+  }
 }
 // Follows the theme and accent chosen in Ferritone's preferences.
 let paletteKey = "";
@@ -368,11 +493,11 @@ function render() {
   $("out-pc").classList.toggle("on", output === "pc");
   $("out-phone").classList.toggle("on", output === "phone");
   for (const name of ["queue", "library", "playlists"]) {
-    $("tab-" + name).textContent = w[name];
+    $("tab-" + name).querySelector("span").textContent = w[name];
     $("tab-" + name).classList.toggle("on", tab === name);
   }
   $("search").placeholder = w.search;
-  $("search").style.display = tab === "library" ? "block" : "none";
+  $("search-box").style.display = tab === "library" ? "block" : "none";
   const phone = output === "phone";
   const entry = phone ? localEntry() : null;
   const title = phone ? entry && entry.title : state.title;
@@ -389,9 +514,14 @@ function render() {
   const key = phone ? local.src + local.index : [state.current, state.title, state.album].join("\u0001");
   if (key !== coverKey) {
     coverKey = key;
-    const img = $("cover");
-    img.onload = () => { img.style.display = "block"; $("note").style.display = "none"; };
-    img.onerror = () => { img.style.display = "none"; $("note").style.display = "block"; };
+    const img = $("cover"), backdrop = $("backdrop");
+    img.onload = () => {
+      img.style.display = "block"; $("note").style.display = "none";
+      backdrop.src = img.src; backdrop.classList.add("shown");
+    };
+    img.onerror = () => {
+      img.style.display = "none"; $("note").style.display = "block"; backdrop.classList.remove("shown");
+    };
     img.src = coverUrl();
   }
   renderTransport();
@@ -434,6 +564,7 @@ function endSeek() { seeking = false; clearTimeout(seekIdle); renderTransport();
 $("seek").oninput = () => {
   seeking = true;
   $("position").textContent = time(+$("seek").value);
+  fill($("seek"));
   clearTimeout(seekIdle);
   seekIdle = setTimeout(endSeek, 3000);
 };
@@ -448,6 +579,7 @@ $("seek").onchange = () => {
 let volumeTimer = null;
 $("volume").oninput = () => {
   changingVolume = true;
+  fill($("volume"));
   if (output === "phone") { audio.volume = +$("volume").value / 100; return; }
   // Send at most a few updates per second while the finger moves.
   if (!volumeTimer) volumeTimer = setTimeout(() => { volumeTimer = null; send("volume", +$("volume").value / 100); }, 120);

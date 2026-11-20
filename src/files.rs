@@ -179,6 +179,8 @@ impl Player {
                     state.tracks.dedup();
                 }
                 player.refresh_library_visibility();
+                // Watch the new folder too.
+                player.rescan_library();
                 if found && player.page.get() != Page::Library {
                     player.show(Page::Library);
                 }

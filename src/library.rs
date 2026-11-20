@@ -510,6 +510,33 @@ impl Library {
             .collect()
     }
 
+    /// Brings the library in line with fresh scans of its folders. Only folders that were
+    /// scanned are touched, so an unplugged drive does not empty the library.
+    /// Returns how many tracks were added and removed.
+    pub fn sync_roots(&mut self, scans: &[RootScan]) -> (usize, usize) {
+        let before = self.tracks.len();
+        let mut removed = 0;
+        for scan in scans {
+            let found: BTreeSet<&PathBuf> = scan.tracks.iter().collect();
+            self.tracks.retain(|track| {
+                let keep = !track.starts_with(&scan.root) || found.contains(track);
+                removed += usize::from(!keep);
+                keep
+            });
+        }
+        let known: BTreeSet<PathBuf> = self.tracks.iter().cloned().collect();
+        let new: BTreeSet<&PathBuf> = scans
+            .iter()
+            .flat_map(|scan| &scan.tracks)
+            .filter(|track| !known.contains(*track))
+            .collect();
+        let added = new.len();
+        self.tracks.extend(new.into_iter().cloned());
+        self.tracks.sort();
+        debug_assert_eq!(self.tracks.len(), before - removed + added);
+        (added, removed)
+    }
+
     pub fn load(path: &Path) -> io::Result<Self> {
         let mut library: Self = match fs::read(path) {
             Ok(bytes) => serde_json::from_slice(&bytes).map_err(io::Error::other)?,
@@ -615,6 +642,50 @@ pub fn collect_tracks(paths: Vec<PathBuf>) -> Vec<PathBuf> {
         }
     }
     tracks.into_iter().collect()
+}
+
+/// The audio files and folders found under one library folder.
+pub struct RootScan {
+    pub root: PathBuf,
+    pub tracks: Vec<PathBuf>,
+    pub folders: Vec<PathBuf>,
+}
+
+/// Scans a library folder, or returns `None` if it is not there right now.
+pub fn scan_root(root: &Path) -> Option<RootScan> {
+    let root = root.canonicalize().ok().filter(|root| root.is_dir())?;
+    let mut pending = vec![root.clone()];
+    let mut visited = BTreeSet::new();
+    let (mut tracks, mut folders) = (Vec::new(), Vec::new());
+    while let Some(folder) = pending.pop() {
+        let Ok(folder) = folder.canonicalize() else {
+            continue;
+        };
+        if !visited.insert(folder.clone()) {
+            continue;
+        }
+        let Ok(entries) = fs::read_dir(&folder) else {
+            continue;
+        };
+        folders.push(folder);
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                pending.push(path);
+            } else if path.is_file() && supported(&path) {
+                if let Ok(path) = path.canonicalize() {
+                    tracks.push(path);
+                }
+            }
+        }
+    }
+    tracks.sort();
+    tracks.dedup();
+    Some(RootScan {
+        root,
+        tracks,
+        folders,
+    })
 }
 
 pub fn supported(path: &Path) -> bool {
@@ -845,6 +916,37 @@ mod tests {
         all.push(missing);
         let newest = recently_added(&all, 2);
         assert_eq!(newest, [tracks[0].clone(), tracks[2].clone()]);
+    }
+
+    #[test]
+    fn syncing_a_folder_adds_new_files_and_drops_deleted_ones_only_there() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = directory.path().join("Music");
+        fs::create_dir_all(root.join("Album")).unwrap();
+        for name in ["Album/one.flac", "Album/two.mp3", "notes.txt"] {
+            fs::write(root.join(name), b"").unwrap();
+        }
+        let scan = scan_root(&root).unwrap();
+        let root = scan.root.clone();
+        assert_eq!(scan.tracks.len(), 2);
+        assert_eq!(scan.folders.len(), 2);
+        let elsewhere = PathBuf::from("/elsewhere/kept.ogg");
+        let mut library = Library {
+            tracks: vec![
+                root.join("Album/one.flac"),
+                root.join("gone.wav"),
+                elsewhere.clone(),
+            ],
+            ..Library::default()
+        };
+        assert_eq!(library.sync_roots(&[scan]), (1, 1));
+        assert!(library.tracks.contains(&root.join("Album/two.mp3")));
+        assert!(!library.tracks.contains(&root.join("gone.wav")));
+        assert!(library.tracks.contains(&elsewhere));
+        // A folder that is not there (an unplugged drive) is not scanned and changes nothing.
+        assert!(scan_root(&directory.path().join("Unplugged")).is_none());
+        assert_eq!(library.sync_roots(&[]), (0, 0));
+        assert_eq!(library.tracks.len(), 3);
     }
 
     #[test]

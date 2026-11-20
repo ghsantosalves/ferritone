@@ -3,6 +3,7 @@ mod files;
 mod i18n;
 mod library;
 mod library_view;
+mod library_watch;
 mod lyrics;
 mod lyrics_view;
 mod metadata;
@@ -165,6 +166,11 @@ struct Player {
     sleep: Cell<playback::SleepTimer>,
     /// Whether the current track's play has been counted.
     play_counted: Cell<bool>,
+    /// Watches the library folders for added and removed files.
+    library_monitors: RefCell<Vec<gio::FileMonitor>>,
+    library_rescan_timer: RefCell<Option<glib::SourceId>>,
+    library_scanning: Cell<bool>,
+    library_rescan_again: Cell<bool>,
     /// The volume last given to the pipeline, after any sleep fade.
     applied_volume: Cell<f64>,
 }
@@ -425,6 +431,10 @@ fn build(app: &gtk::Application) {
         remote_cover: RefCell::new(None),
         sleep: Cell::new(playback::SleepTimer::Off),
         play_counted: Cell::new(false),
+        library_monitors: RefCell::default(),
+        library_rescan_timer: RefCell::new(None),
+        library_scanning: Cell::new(false),
+        library_rescan_again: Cell::new(false),
         applied_volume: Cell::new(0.7),
     });
 
@@ -850,6 +860,7 @@ fn build(app: &gtk::Application) {
     player.update_repeat();
     player.load_current_track();
     player.update_transport();
+    player.rescan_library();
     if player.state.borrow().remote_enabled {
         if let Err(error) = player.start_remote() {
             eprintln!("Could not start the phone remote: {error}");

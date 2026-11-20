@@ -7,7 +7,7 @@ Ferritone is a Linux desktop music player written in Rust. It organizes local au
 On Debian 13 (trixie) amd64, download the `.deb` from the [latest release](https://github.com/ghsantosalves/ferritone/releases/latest) and install it with apt, which also pulls in GTK and GStreamer:
 
 ```sh
-sudo apt install ./ferritone_0.2.0-1.trixie1_amd64.deb
+sudo apt install ./ferritone_0.2.1-1.trixie1_amd64.deb
 ```
 
 Open **Ferritone** from the application menu. To update, install the `.deb` from a newer release the same way. To uninstall, run `sudo apt remove ferritone`.

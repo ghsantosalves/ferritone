@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.1" date="2026-11-20">
+      <description>
+        <p>A refined look: the sidebar shows icons and marks the page you are on, the playback bar and mini player use round controls with the play button in the accent color and slim sliders, and track lists are softer and rounder. The phone and tablet remote is redesigned, with a blurred cover backdrop, covers and lengths in every list, and the playing track marked by animated bars. Its progress bar no longer freezes after a touch turns into a scroll.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-11-20">
       <description>
         <p>Control Ferritone from a phone or tablet: scan a QR code to play, pause, skip, seek, and browse the queue, the whole library, and playlists in the browser, or play the music on that device itself. On the computer, the same page opens at localhost. Browse the library by album and artist with covers, play smart lists of recently added, recently played, and most played tracks, and let tracks follow each other without a gap. New folders and files in the library appear on their own. A sleep timer pauses playback, the screen and computer stay awake while music plays, listens can be sent to ListenBrainz, and synchronized lyrics are found for many more songs. The System theme follows the desktop as it changes, and the remote page and dock controls use Ferritone's colors.</p>

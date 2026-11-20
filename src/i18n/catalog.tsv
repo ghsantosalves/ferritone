@@ -191,15 +191,8 @@ Waveform style	Estilo de la forma de onda	Style de la forme d’onde
 Duration	Duración	Durée
 Skipped a track that could not be played.	Se omitió una pista que no se pudo reproducir.	Une piste illisible a été ignorée.
 Several tracks in a row could not be played. Check your audio output.	Varias pistas seguidas no se pudieron reproducir. Revisa la salida de audio.	Plusieurs pistes d’affilée n’ont pas pu être lues. Vérifiez la sortie audio.
-Phone remote	Control desde el móvil	Télécommande sur téléphone
-Allow control from a phone	Permitir el control desde un móvil	Autoriser le contrôle depuis un téléphone
-When this is on, a phone on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser.	Con esta opción activada, un móvil en la misma red Wi-Fi puede reproducir, pausar, cambiar de pista y elegir listas desde su navegador.	Lorsque cette option est activée, un téléphone sur le même réseau Wi-Fi peut lire, mettre en pause, changer de piste et choisir des listes depuis son navigateur.
 This computer is not connected to a network. Connect it to Wi-Fi or a cable and open this window again.	Este equipo no está conectado a una red. Conéctalo a una red Wi-Fi o por cable y vuelve a abrir esta ventana.	Cet ordinateur n’est connecté à aucun réseau. Connectez-le au Wi-Fi ou par câble, puis rouvrez cette fenêtre.
-QR code for the phone remote	Código QR del control desde el móvil	Code QR de la télécommande sur téléphone
-Scan the code with your phone's camera. The phone must be on the same Wi-Fi network as this computer.	Escanea el código con la cámara del móvil. El móvil debe estar en la misma red Wi-Fi que este equipo.	Scannez le code avec l’appareil photo du téléphone. Le téléphone doit être sur le même réseau Wi-Fi que cet ordinateur.
 New link	Nuevo enlace	Nouveau lien
-Disconnect phones that have the current link	Desconecta los móviles que tienen el enlace actual	Déconnecte les téléphones qui ont le lien actuel
-The phone remote could not start.	No se pudo iniciar el control desde el móvil.	Impossible de démarrer la télécommande sur téléphone.
 Sleep timer	Temporizador de apagado	Minuterie de mise en veille
 The sleep timer paused playback.	El temporizador pausó la reproducción.	La minuterie a mis la lecture en pause.
 Playback will pause at the end of this track.	La reproducción se pausará al final de esta pista.	La lecture se mettra en pause à la fin de cette piste.
@@ -243,7 +236,6 @@ Open the remote page in this computer's browser	Abre la página del control en e
 Playing music	Reproduciendo música	Lecture de musique
 Stops the screen from locking and the computer from sleeping while music plays	Evita que la pantalla se bloquee y que el equipo se suspenda mientras suena música	Empêche l’écran de se verrouiller et l’ordinateur de se mettre en veille pendant la lecture
 On this computer, open {} in any browser while Ferritone is open.	En este equipo, abre {} en cualquier navegador mientras Ferritone esté abierto.	Sur cet ordinateur, ouvrez {} dans n’importe quel navigateur tant que Ferritone est ouvert.
-When this is on, a phone on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser. Nothing goes through the internet.	Con esta opción activada, un móvil en la misma red Wi-Fi puede reproducir, pausar, cambiar de pista y elegir listas desde su navegador. Nada pasa por internet.	Lorsque cette option est activée, un téléphone sur le même réseau Wi-Fi peut lire, mettre en pause, changer de piste et choisir des listes depuis son navigateur. Rien ne passe par internet.
 Browser shortcut	Acceso directo en el navegador	Raccourci dans le navigateur
 Open the player by typing ferritone in your browser while Ferritone is open.	Abre el reproductor escribiendo ferritone en el navegador mientras Ferritone esté abierto.	Ouvrez le lecteur en tapant ferritone dans le navigateur tant que Ferritone est ouvert.
 Install browser shortcut	Instalar acceso directo en el navegador	Installer le raccourci dans le navigateur
@@ -251,3 +243,10 @@ The player page is not available right now.	La página del reproductor no está 
 Choose the browser to set up. Ferritone opens it with the steps and copies the player's address.	Elige el navegador que quieres configurar. Ferritone lo abre con los pasos y copia la dirección del reproductor.	Choisissez le navigateur à configurer. Ferritone l’ouvre avec les étapes et copie l’adresse du lecteur.
 No web browser was found.	No se encontró ningún navegador.	Aucun navigateur n’a été trouvé.
 The browser could not be opened.	No se pudo abrir el navegador.	Impossible d’ouvrir le navigateur.
+Remote control	Control remoto	Télécommande
+Allow remote control	Permitir el control remoto	Autoriser le contrôle à distance
+When this is on, a phone or tablet on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser. Nothing goes through the internet.	Con esta opción activada, un móvil o una tableta en la misma red Wi-Fi puede reproducir, pausar, cambiar de pista y elegir listas desde su navegador. Nada pasa por internet.	Lorsque cette option est activée, un téléphone ou une tablette sur le même réseau Wi-Fi peut lire, mettre en pause, changer de piste et choisir des listes depuis son navigateur. Rien ne passe par internet.
+QR code for the remote control	Código QR del control remoto	Code QR de la télécommande
+Scan the code with the camera of a phone or tablet. It must be on the same Wi-Fi network as this computer.	Escanea el código con la cámara de un móvil o una tableta. Debe estar en la misma red Wi-Fi que este equipo.	Scannez le code avec l’appareil photo d’un téléphone ou d’une tablette. Il doit être sur le même réseau Wi-Fi que cet ordinateur.
+Disconnect devices that have the current link	Desconecta los dispositivos que tienen el enlace actual	Déconnecte les appareils qui ont le lien actuel
+The remote control could not start.	No se pudo iniciar el control remoto.	Impossible de démarrer la télécommande.

@@ -714,7 +714,7 @@ fn build(app: &gtk::Application) {
             ));
             let popup = navigation_popup.downgrade();
             sections.append(&shortcut_button(
-                player.text("Phone remote", "Controle pelo celular"),
+                player.text("Remote control", "Controle remoto"),
                 "",
                 None,
                 false,

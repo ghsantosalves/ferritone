@@ -294,7 +294,7 @@ impl Player {
 
     pub(crate) fn show_remote(self: &Rc<Self>) {
         let window = gtk::Window::builder()
-            .title(self.text("Phone remote", "Controle pelo celular"))
+            .title(self.text("Remote control", "Controle remoto"))
             .transient_for(&self.window)
             .modal(true)
             .resizable(false)
@@ -307,19 +307,17 @@ impl Player {
         content.set_margin_end(18);
 
         let toggle_row = gtk::Box::new(gtk::Orientation::Horizontal, 12);
-        let label = gtk::Label::new(Some(self.text(
-            "Allow control from a phone",
-            "Permitir controle pelo celular",
-        )));
+        let label = gtk::Label::new(Some(
+            self.text("Allow remote control", "Permitir controle remoto"),
+        ));
         label.set_xalign(0.0);
         label.set_hexpand(true);
         let switch = gtk::Switch::new();
         switch.set_valign(gtk::Align::Center);
         switch.set_active(self.remote_on_network());
-        switch.update_property(&[gtk::accessible::Property::Label(self.text(
-            "Allow control from a phone",
-            "Permitir controle pelo celular",
-        ))]);
+        switch.update_property(&[gtk::accessible::Property::Label(
+            self.text("Allow remote control", "Permitir controle remoto"),
+        )]);
         toggle_row.append(&label);
         toggle_row.append(&switch);
         content.append(&toggle_row);
@@ -378,8 +376,8 @@ impl Player {
                 }
                 if !player.remote_on_network() {
                     details.append(&hint(player.text(
-                        "When this is on, a phone on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser. Nothing goes through the internet.",
-                        "Com isto ligado, um celular na mesma rede Wi-Fi pode tocar, pausar, trocar de faixa e escolher listas de reprodução pelo navegador. Nada passa pela internet.",
+                        "When this is on, a phone or tablet on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser. Nothing goes through the internet.",
+                        "Com isto ligado, um celular ou tablet na mesma rede Wi-Fi pode tocar, pausar, trocar de faixa e escolher listas de reprodução pelo navegador. Nada passa pela internet.",
                     )));
                     details.append(&local);
                     return;
@@ -395,13 +393,13 @@ impl Player {
                 let code = remote::qr_area(&url, 240);
                 code.set_halign(gtk::Align::Center);
                 code.update_property(&[gtk::accessible::Property::Label(player.text(
-                    "QR code for the phone remote",
-                    "QR code do controle pelo celular",
+                    "QR code for the remote control",
+                    "QR code do controle remoto",
                 ))]);
                 details.append(&code);
                 details.append(&hint(player.text(
-                    "Scan the code with your phone's camera. The phone must be on the same Wi-Fi network as this computer.",
-                    "Aponte a câmera do celular para o código. O celular precisa estar na mesma rede Wi-Fi que este computador.",
+                    "Scan the code with the camera of a phone or tablet. It must be on the same Wi-Fi network as this computer.",
+                    "Aponte a câmera de um celular ou tablet para o código. Ele precisa estar na mesma rede Wi-Fi que este computador.",
                 )));
                 let link = gtk::Label::new(Some(&url));
                 link.set_selectable(true);
@@ -425,8 +423,8 @@ impl Player {
                     }
                 });
                 reset.set_tooltip_text(Some(player.text(
-                    "Disconnect phones that have the current link",
-                    "Desconecta os celulares que têm o link atual",
+                    "Disconnect devices that have the current link",
+                    "Desconecta os aparelhos que têm o link atual",
                 )));
                 let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
                 row.add_css_class("page-actions");
@@ -460,8 +458,8 @@ impl Player {
                 if let Err(error) = player.start_remote() {
                     eprintln!("Could not start the phone remote: {error}");
                     player.message(player.text(
-                        "The phone remote could not start.",
-                        "Não foi possível ligar o controle pelo celular.",
+                        "The remote control could not start.",
+                        "Não foi possível ligar o controle remoto.",
                     ));
                     switch.set_active(false);
                     return glib::Propagation::Stop;

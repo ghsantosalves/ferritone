@@ -379,7 +379,7 @@ impl Player {
                 if !player.remote_on_network() {
                     details.append(&hint(player.text(
                         "When this is on, a phone on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser. Nothing goes through the internet.",
-                        "Com isto ligado, um celular na mesma rede Wi-Fi pode tocar, pausar, trocar de faixa e escolher playlists pelo navegador. Nada passa pela internet.",
+                        "Com isto ligado, um celular na mesma rede Wi-Fi pode tocar, pausar, trocar de faixa e escolher listas de reprodução pelo navegador. Nada passa pela internet.",
                     )));
                     details.append(&local);
                     return;

@@ -58,7 +58,7 @@
   .badge span { position: absolute; right: 9px; bottom: 9px; font-size: 10px; font-weight: 800; }
   .volume { display: flex; align-items: center; gap: 10px; width: 100%; }
   .volume svg { width: 22px; height: 22px; fill: var(--muted); flex: none; }
-  .tabs { display: flex; gap: 8px; margin: 22px 0 8px; overflow-x: auto; }
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 22px 0 8px; }
   .tabs button { width: auto; height: 38px; padding: 0 16px; background: var(--surface);
     color: var(--muted); font: inherit; font-weight: 600; flex: none; }
   .tabs button.on { background: var(--raised); color: var(--text); }
@@ -131,8 +131,8 @@ const words = {
         offline: "Can't reach Ferritone. Check that it is open and on the same Wi-Fi network.",
         unsupported: "This browser can't play this file's format, so it was skipped.",
         blocked: "Tap play to start the sound on this phone." },
-  pt: { queue: "Fila", library: "Biblioteca", playlists: "Playlists", nothing: "Nenhuma faixa",
-        emptyQueue: "A fila está vazia.", emptyPlaylists: "Nenhuma playlist salva.", emptyLibrary: "A biblioteca está vazia.",
+  pt: { queue: "Fila", library: "Biblioteca", playlists: "Listas de reprodução", nothing: "Nenhuma faixa",
+        emptyQueue: "A fila está vazia.", emptyPlaylists: "Nenhuma lista de reprodução salva.", emptyLibrary: "A biblioteca está vazia.",
         noMatches: "Nenhuma faixa encontrada.", search: "Buscar faixas, artistas e álbuns", more: "Mostrar mais",
         tracks: n => n === 1 ? "1 faixa" : n + " faixas", playOn: "Tocar no", pc: "Computador", phone: "Celular",
         offline: "Não foi possível falar com o Ferritone. Confira se ele está aberto e na mesma rede Wi-Fi.",

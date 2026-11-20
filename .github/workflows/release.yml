@@ -20,7 +20,7 @@ jobs:
             ca-certificates git build-essential pkgconf cargo rustc python3 \
             dpkg-dev gh libglib2.0-dev-bin libgtk-4-dev libgstreamer1.0-dev \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check that the tag matches Cargo.toml
         run: |
           version=$(cargo metadata --locked --no-deps --format-version=1 |

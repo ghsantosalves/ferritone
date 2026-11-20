@@ -44,6 +44,8 @@ type LibraryRefresh = Rc<dyn Fn(&str)>;
 type PlaylistIndicator = (usize, glib::WeakRef<gtk::Box>, glib::WeakRef<gtk::Image>);
 const APP_ID: &str = "io.github.rustmusicplayer.Player";
 const AUTOSAVE_INTERVAL: Duration = Duration::from_secs(30);
+// Stop skipping after this many tracks in a row fail, so a broken audio setup does not walk the queue.
+const MAX_SKIPS: usize = 5;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Page {
@@ -136,8 +138,10 @@ struct Player {
     pending_seek: Cell<u64>,
     pending_seek_signal: Cell<bool>,
     importing: Cell<bool>,
-    /// Consecutive tracks that failed to play; stops skipping once the whole queue has failed.
+    /// Consecutive tracks that failed to play; skipping stops after `MAX_SKIPS` or the whole queue.
     failed_in_row: Cell<usize>,
+    /// Queue index of the first track in the current failure run, kept as the resume point.
+    failed_from: Cell<usize>,
     /// Last time the playback position was saved while playing.
     last_autosave: Cell<Instant>,
 }
@@ -377,6 +381,7 @@ fn build(app: &gtk::Application) {
         pending_seek_signal: Cell::new(false),
         importing: Cell::new(false),
         failed_in_row: Cell::new(0),
+        failed_from: Cell::new(0),
         last_autosave: Cell::new(Instant::now()),
     });
 
@@ -948,6 +953,7 @@ impl Player {
     }
 
     fn save(&self) {
+        self.last_autosave.set(Instant::now());
         if let Some(path) = &self.storage {
             if let Err(error) = self.state.borrow().save(path) {
                 eprintln!("Could not save library: {error}");
@@ -3712,6 +3718,8 @@ impl Player {
         let track = self.state.borrow().queue.get(index).cloned();
         let Some(track) = track else { return };
         self.message("");
+        // A new track starts a new failure run; the error handler restores its own count.
+        self.failed_in_row.set(0);
         let _ = self.pipeline.set_state(gst::State::Null);
         if let Some(waveform) = &self.waveform {
             waveform.clear();
@@ -3773,7 +3781,11 @@ impl Player {
             return;
         }
         if let Some(position) = self.pipeline.query_position::<gst::ClockTime>() {
-            self.state.borrow_mut().position_ms = position.mseconds();
+            let position = position.mseconds();
+            self.state.borrow_mut().position_ms = position;
+            if position >= 1000 {
+                self.failed_in_row.set(0);
+            }
         }
     }
 
@@ -3909,31 +3921,47 @@ impl Player {
                     gst::MessageView::Error(error) => {
                         eprintln!("Playback error: {}", error.error());
                         let failed = self.failed_in_row.get() + 1;
-                        self.failed_in_row.set(failed);
+                        if failed == 1 {
+                            self.failed_from.set(self.state.borrow().current);
+                        }
                         let next = {
                             let state = self.state.borrow();
-                            (failed < state.queue.len())
+                            (failed < state.queue.len().min(MAX_SKIPS))
                                 .then(|| state.next_index(1, false))
                                 .flatten()
                         };
                         if let Some(index) = next {
                             self.start(index, 0);
+                            self.failed_in_row.set(failed);
                             self.message(self.text(
                                 "Skipped a track that could not be played.",
                                 "Uma faixa que não pôde ser tocada foi pulada.",
                             ));
                         } else {
+                            if failed > 1 {
+                                // Keep the resume point on the first track that failed.
+                                self.state.borrow_mut().current = self.failed_from.get();
+                                self.load_current_track();
+                                self.refresh_track_highlight();
+                            }
                             self.stop();
-                            self.message(self.text(
-                                "This track could not be played.",
-                                "Não foi possível tocar esta faixa.",
-                            ));
+                            self.update_transport();
+                            self.message(if failed > 1 {
+                                self.text(
+                                    "Several tracks in a row could not be played. Check your audio output.",
+                                    "Várias faixas seguidas não puderam ser tocadas. Verifique a saída de áudio.",
+                                )
+                            } else {
+                                self.text(
+                                    "This track could not be played.",
+                                    "Não foi possível tocar esta faixa.",
+                                )
+                            });
                         }
                         // Later messages belong to the failed pipeline run.
                         break;
                     }
                     gst::MessageView::AsyncDone(..) => {
-                        self.failed_in_row.set(0);
                         let position = self.pending_seek.replace(0);
                         if position > 0 {
                             self.seek(position as f64 / 1000.0);
@@ -3954,7 +3982,6 @@ impl Player {
         self.update_transport();
         // Keep the resume point recent in case the session ends without closing the window.
         if self.playing.get() && self.last_autosave.get().elapsed() >= AUTOSAVE_INTERVAL {
-            self.last_autosave.set(Instant::now());
             self.save();
         }
         if self.window.is_mapped() {

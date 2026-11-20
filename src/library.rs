@@ -39,8 +39,10 @@ pub struct Library {
     pub play_counts: BTreeMap<PathBuf, u32>,
     /// When each track was last played, in seconds since the Unix epoch.
     pub last_played: BTreeMap<PathBuf, u64>,
-    /// Lets the computer lock and sleep while music plays; off keeps it awake.
+    /// Lets the computer suspend while music plays; off keeps it awake.
     pub allow_sleep: bool,
+    /// Lets the screen blank and lock while music plays; off keeps it on.
+    pub allow_screen_lock: bool,
     pub listenbrainz_enabled: bool,
     pub listenbrainz_token: String,
     /// Listens not yet accepted by ListenBrainz, oldest first.

@@ -8,7 +8,7 @@ use lofty::{
     tag::{Accessor, ItemKey},
 };
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct TrackInfo {
     pub title: Option<String>,
     pub artist: Option<String>,

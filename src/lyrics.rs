@@ -11,42 +11,70 @@ pub enum Lyrics {
 }
 
 impl Lyrics {
-    pub fn lookup_online(info: &crate::metadata::TrackInfo) -> Option<Self> {
+    /// Looks the track up on LRCLIB, trying looser queries until synchronized lyrics turn up.
+    /// Missing tags are guessed from the file and folder names.
+    pub fn lookup_online(tags: &crate::metadata::TrackInfo, track: &Path) -> Option<Self> {
+        let info = fill_from_path(tags, track);
         let title = info.title.as_deref()?;
         let artist = info.artist.as_deref()?;
-        let mut fields = vec![("track_name", title), ("artist_name", artist)];
-        if let Some(album) = info.album.as_deref() {
-            fields.push(("album_name", album));
-        }
         let duration = info
             .duration_ms
             .map(|ms| ms.saturating_add(500) / 1000)
             .filter(|s| (1..=3600).contains(s))
             .map(|s| s.to_string());
-        if let Some(seconds) = duration.as_deref() {
-            fields.push(("duration", seconds));
-        }
-        let (status, body) = lrclib_request("get", &fields)?;
-        let exact = match status {
-            200 => serde_json::from_str::<LyricsRecord>(&body).ok(),
-            404 => None,
-            _ => return None,
+        let core = core_title(title);
+        let main_artist = primary_artist(artist);
+        let mut records: Vec<LyricsRecord> = Vec::new();
+        let mut best = None;
+        // Stops as soon as synchronized lyrics match; each query widens the search.
+        let mut attempt = |endpoint: &str, fields: Vec<(&str, &str)>| -> bool {
+            let Some((200, body)) = lrclib_request(endpoint, &fields) else {
+                return false;
+            };
+            if endpoint == "get" {
+                records.extend(serde_json::from_str::<LyricsRecord>(&body).ok());
+            } else {
+                records.extend(
+                    serde_json::from_str::<Vec<LyricsRecord>>(&body)
+                        .unwrap_or_default()
+                        .into_iter()
+                        .take(40),
+                );
+            }
+            best = match_search_result(&records, &info);
+            matches!(best, Some(Self::Timed(_)))
         };
-        let fallback = match_search_result(exact.as_slice(), info);
-        if matches!(fallback, Some(Self::Timed(_))) {
-            return fallback;
+        let mut exact = vec![("track_name", title), ("artist_name", artist)];
+        if let Some(album) = info.album.as_deref() {
+            exact.push(("album_name", album));
         }
-        let results = lrclib_request("search", &fields[..2])
-            .filter(|(status, _)| *status == 200)
-            .and_then(|(_, body)| serde_json::from_str::<Vec<LyricsRecord>>(&body).ok());
-        let alternate = results
-            .as_deref()
-            .and_then(|records| match_search_result(records, info));
-        if matches!(alternate, Some(Self::Timed(_))) {
-            alternate
-        } else {
-            fallback.or(alternate)
+        if let Some(seconds) = duration.as_deref() {
+            exact.push(("duration", seconds));
         }
+        if attempt("get", exact) {
+            return best;
+        }
+        let mut loose = vec![("track_name", core.as_str()), ("artist_name", main_artist)];
+        if let Some(seconds) = duration.as_deref() {
+            loose.push(("duration", seconds));
+        }
+        if (core != title || main_artist != artist) && attempt("get", loose) {
+            return best;
+        }
+        if attempt(
+            "search",
+            vec![("track_name", core.as_str()), ("artist_name", main_artist)],
+        ) {
+            return best;
+        }
+        // LRCLIB may credit the artist differently ("&" for "e"); search by title alone and
+        // let the local artist check decide.
+        if attempt("search", vec![("track_name", core.as_str())]) {
+            return best;
+        }
+        let words = format!("{main_artist} {core}");
+        attempt("search", vec![("q", words.as_str())]);
+        best
     }
 
     pub fn read(track: &Path) -> Self {
@@ -171,15 +199,10 @@ impl LyricsRecord {
             })
     }
 
+    /// Synchronized lyrics only line up with a recording of the same length. The album is not
+    /// required to match: compilations and deluxe editions reuse the same recording.
     fn matches_recording(&self, info: &crate::metadata::TrackInfo) -> bool {
-        let local_album = info.album.as_deref().map(fold_search_name);
-        let online_album = self.album_name.as_deref().map(fold_search_name);
-        let album_mismatch = local_album
-            .zip(online_album)
-            .is_some_and(|(local, online)| {
-                !local.is_empty() && !online.is_empty() && local != online
-            });
-        self.duration_difference(info) <= 2.0 && !album_mismatch
+        self.duration_difference(info) <= 2.0
     }
 
     fn lyrics(&self, allow_sync: bool) -> Option<Lyrics> {
@@ -199,34 +222,241 @@ fn match_search_result(
     records: &[LyricsRecord],
     info: &crate::metadata::TrackInfo,
 ) -> Option<Lyrics> {
-    let title = fold_search_name(info.title.as_deref()?);
-    let artist = fold_search_name(info.artist.as_deref()?);
-    if title.is_empty() || artist.is_empty() {
+    let title = info.title.as_deref()?;
+    let artist = info.artist.as_deref()?;
+    if fold_search_name(title).is_empty() || fold_search_name(artist).is_empty() {
         return None;
     }
     let album = info.album.as_deref().map(fold_search_name);
     records
         .iter()
         .filter(|record| {
-            fold_search_name(&record.track_name) == title
-                && fold_search_name(&record.artist_name) == artist
+            titles_match(&record.track_name, title) && artists_match(&record.artist_name, artist)
         })
         .filter_map(|record| {
             let duration_difference = record.duration_difference(info);
             let lyrics = record.lyrics(record.matches_recording(info))?;
             let synced = matches!(lyrics, Lyrics::Timed(_));
+            let exact_title = fold_search_name(&record.track_name) == fold_search_name(title);
             let same_album =
                 album.is_some() && record.album_name.as_deref().map(fold_search_name) == album;
-            Some((lyrics, synced, same_album, duration_difference))
+            Some((
+                lyrics,
+                (synced, exact_title, same_album),
+                duration_difference,
+            ))
         })
+        // Synchronized first, then the exact title, the same album, and the closest length.
         .min_by(|left, right| {
             right
                 .1
                 .cmp(&left.1)
-                .then_with(|| right.2.cmp(&left.2))
-                .then_with(|| left.3.total_cmp(&right.3))
+                .then_with(|| left.2.total_cmp(&right.2))
         })
-        .map(|(lyrics, _, _, _)| lyrics)
+        .map(|(lyrics, _, _)| lyrics)
+}
+
+/// Words in brackets or after a dash that name a version rather than the song.
+const VERSION_WORDS: [&str; 22] = [
+    "remaster",
+    "remastered",
+    "live",
+    "feat",
+    "ft",
+    "featuring",
+    "with",
+    "version",
+    "edit",
+    "mix",
+    "remix",
+    "mono",
+    "stereo",
+    "deluxe",
+    "bonus",
+    "explicit",
+    "clean",
+    "single",
+    "radio",
+    "acoustic",
+    "demo",
+    "bootleg",
+];
+
+fn names_version(text: &str) -> bool {
+    let lower = text.to_lowercase();
+    lower
+        .split(|character: char| !character.is_alphanumeric())
+        .any(|word| {
+            VERSION_WORDS.contains(&word) || (word.len() == 4 && word.starts_with(['1', '2']))
+        })
+}
+
+/// The song title without version notes such as "(Remastered 2011)", "[Live]",
+/// "(feat. Someone)", or " - 2009 Remaster".
+pub fn core_title(title: &str) -> String {
+    let mut text = String::new();
+    let mut depth = 0usize;
+    let mut group = String::new();
+    for character in title.chars() {
+        match character {
+            '(' | '[' => {
+                depth += 1;
+                if depth == 1 {
+                    group.clear();
+                    continue;
+                }
+            }
+            ')' | ']' if depth > 0 => {
+                depth -= 1;
+                if depth == 0 {
+                    if !names_version(&group) {
+                        text.push('(');
+                        text.push_str(&group);
+                        text.push(')');
+                    }
+                    continue;
+                }
+            }
+            _ => {}
+        }
+        if depth > 0 {
+            group.push(character);
+        } else {
+            text.push(character);
+        }
+    }
+    let mut text = text.trim().to_owned();
+    for separator in [" - ", " – ", " — "] {
+        if let Some((head, tail)) = text.rsplit_once(separator) {
+            if names_version(tail) && !head.trim().is_empty() {
+                text = head.trim().to_owned();
+            }
+        }
+    }
+    for marker in [" feat. ", " feat ", " ft. ", " ft "] {
+        if let Some(index) = text.to_lowercase().find(marker) {
+            text.truncate(index);
+        }
+    }
+    let text = text.trim().to_owned();
+    if text.is_empty() {
+        title.trim().to_owned()
+    } else {
+        text
+    }
+}
+
+/// Each credited artist, from "A feat. B", "A & B", "A, B", or "A x B".
+fn artist_names(artist: &str) -> Vec<String> {
+    let mut names = artist.to_lowercase();
+    for separator in [
+        " feat. ",
+        " feat ",
+        " ft. ",
+        " ft ",
+        " featuring ",
+        " & ",
+        " and ",
+        " e ",
+        " y ",
+        " x ",
+        " with ",
+        ", ",
+        "; ",
+        " / ",
+    ] {
+        names = names.replace(separator, "\u{1}");
+    }
+    names
+        .split('\u{1}')
+        .map(fold_search_name)
+        .filter(|name| !name.is_empty())
+        .collect()
+}
+
+/// The first credited artist, for queries.
+pub fn primary_artist(artist: &str) -> &str {
+    let lower = artist.to_lowercase();
+    let cut = [
+        " feat. ",
+        " feat ",
+        " ft. ",
+        " ft ",
+        " featuring ",
+        " & ",
+        ", ",
+        "; ",
+        " / ",
+        " x ",
+        " with ",
+        " e ",
+        " and ",
+        " y ",
+    ]
+    .iter()
+    .filter_map(|separator| lower.find(separator))
+    .min()
+    .unwrap_or(artist.len());
+    // Lowercasing keeps byte offsets for the separators, which are ASCII.
+    artist.get(..cut).unwrap_or(artist).trim()
+}
+
+fn titles_match(online: &str, local: &str) -> bool {
+    let (online_exact, local_exact) = (fold_search_name(online), fold_search_name(local));
+    online_exact == local_exact
+        || (!local_exact.is_empty()
+            && fold_search_name(&core_title(online)) == fold_search_name(&core_title(local)))
+}
+
+fn artists_match(online: &str, local: &str) -> bool {
+    if fold_search_name(online) == fold_search_name(local) {
+        return true;
+    }
+    let local = artist_names(local);
+    artist_names(online).iter().any(|name| local.contains(name))
+}
+
+/// Fills a missing title or artist from names like "01 - Artist - Title.mp3", or from the
+/// "Artist/Album/01 Title.mp3" folder layout.
+pub fn fill_from_path(
+    info: &crate::metadata::TrackInfo,
+    track: &Path,
+) -> crate::metadata::TrackInfo {
+    let mut info = info.clone();
+    if info.title.is_some() && info.artist.is_some() {
+        return info;
+    }
+    let stem = track
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    // Drop a leading track number such as "01 ", "01. ", "1-03 - ".
+    let name = stem
+        .trim_start_matches(|character: char| {
+            character.is_ascii_digit() || "-._ ".contains(character)
+        })
+        .trim();
+    let name = if name.is_empty() { stem.trim() } else { name };
+    let (guessed_artist, guessed_title) = match name.split_once(" - ") {
+        Some((artist, title)) => (Some(artist.trim().to_owned()), title.trim().to_owned()),
+        None => (None, name.to_owned()),
+    };
+    if info.title.is_none() && !guessed_title.is_empty() {
+        info.title = Some(guessed_title);
+    }
+    if info.artist.is_none() {
+        info.artist = guessed_artist.or_else(|| {
+            let album_folder = track.parent()?;
+            let artist_folder = album_folder.parent()?;
+            let name = artist_folder
+                .file_name()?
+                .to_string_lossy()
+                .trim()
+                .to_owned();
+            (!name.is_empty()).then_some(name)
+        });
+    }
+    info
 }
 
 fn fold_search_name(text: &str) -> String {
@@ -341,15 +571,100 @@ mod tests {
             Some(Lyrics::Plain(_))
         ));
         assert!(match_search_result(&[record("Another Artist", 182.0)], &info).is_none());
+        // The same recording on another album, such as a compilation, still syncs.
         let mut other_album = record("Joao de Sa", 182.0);
-        other_album.album_name = Some("Live".into());
+        other_album.album_name = Some("Greatest Hits".into());
         let studio = crate::metadata::TrackInfo {
             album: Some("Studio".into()),
-            ..info
+            ..info.clone()
         };
         assert!(matches!(
             match_search_result(&[other_album], &studio),
-            Some(Lyrics::Plain(_))
+            Some(Lyrics::Timed(_))
         ));
+    }
+
+    #[test]
+    fn version_notes_and_extra_artists_still_find_the_song() {
+        let info = crate::metadata::TrackInfo {
+            title: Some("Show Me How to Live (2011 Remaster)".into()),
+            artist: Some("Audioslave feat. Someone".into()),
+            album: Some("Audioslave (Deluxe)".into()),
+            duration_ms: Some(277_000),
+            ..Default::default()
+        };
+        let record = LyricsRecord {
+            track_name: "Show Me How To Live".into(),
+            artist_name: "Audioslave".into(),
+            album_name: Some("Audioslave".into()),
+            duration: Some(277.4),
+            synced_lyrics: Some("[00:10.00]Nail in my hand".into()),
+            plain_lyrics: Some("Nail in my hand".into()),
+        };
+        assert!(matches!(
+            match_search_result(&[record], &info),
+            Some(Lyrics::Timed(_))
+        ));
+    }
+
+    #[test]
+    fn core_titles_drop_version_notes_but_keep_real_parentheses() {
+        for (title, core) in [
+            ("Song (Remastered 2011)", "Song"),
+            ("Song - 2009 Remaster", "Song"),
+            ("Song [Live]", "Song"),
+            ("Song (feat. Someone)", "Song"),
+            ("Song feat. Someone", "Song"),
+            ("Song - Radio Edit", "Song"),
+            (
+                "(I Can't Get No) Satisfaction",
+                "(I Can't Get No) Satisfaction",
+            ),
+            ("Love Song - Part One", "Love Song - Part One"),
+            ("(Live)", "(Live)"),
+        ] {
+            assert_eq!(core_title(title), core, "{title}");
+        }
+        assert_eq!(primary_artist("Daft Punk feat. Pharrell"), "Daft Punk");
+        assert_eq!(primary_artist("Simon & Garfunkel"), "Simon");
+        assert_eq!(
+            primary_artist("Chico Science e Nação Zumbi"),
+            "Chico Science"
+        );
+        assert!(artists_match(
+            "Chico Science & Nação Zumbi",
+            "Chico Science e Nação Zumbi"
+        ));
+        assert!(artists_match("Simon & Garfunkel", "Simon & Garfunkel"));
+        assert!(artists_match("Daft Punk", "Daft Punk, Pharrell Williams"));
+        assert!(!artists_match("Daft Punk", "Air"));
+    }
+
+    #[test]
+    fn missing_tags_are_guessed_from_file_and_folder_names() {
+        let empty = crate::metadata::TrackInfo::default();
+        let named = fill_from_path(
+            &empty,
+            Path::new("/music/Mix/03 - Audioslave - Like a Stone.flac"),
+        );
+        assert_eq!(named.artist.as_deref(), Some("Audioslave"));
+        assert_eq!(named.title.as_deref(), Some("Like a Stone"));
+        let foldered = fill_from_path(
+            &empty,
+            Path::new("/music/Audioslave/Audioslave/04 Cochise.mp3"),
+        );
+        assert_eq!(foldered.artist.as_deref(), Some("Audioslave"));
+        assert_eq!(foldered.title.as_deref(), Some("Cochise"));
+        let tagged = crate::metadata::TrackInfo {
+            title: Some("Tagged".into()),
+            artist: Some("Artist".into()),
+            ..Default::default()
+        };
+        assert_eq!(
+            fill_from_path(&tagged, Path::new("/x/01 Other.mp3"))
+                .title
+                .as_deref(),
+            Some("Tagged")
+        );
     }
 }

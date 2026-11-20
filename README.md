@@ -58,7 +58,7 @@ Enable **Lyrics** in **Preferences** or in the playback menu under **View**. You
 
 Drag the timed lyrics up or down in the main player or mini player. Release when the highlighted verse matches what you hear to align that verse with the current playback position. Ferritone saves the adjustment for that audio file. **Reset timing** in the lyrics context menu restores the original timestamps.
 
-Enable **Look up lyrics online** separately to search [LRCLIB](https://lrclib.net/docs) when local lyrics are unavailable. This option requires `curl` on the system. Ferritone sends the track title, artist, and available album and duration metadata. If the direct lookup has no synchronized lyrics, Ferritone checks alternate results for a compatible recording before falling back to plain text. The alternate search compares artist and title without accents or punctuation. Online lyrics are synchronized when durations are within two seconds and available album tags agree. A result from another edition can still be read as plain lyrics in the mini player. Audio and file paths stay on the device. Both lyric options are off by default. Online results are kept in memory for the current session.
+Enable **Look up lyrics online** separately to search [LRCLIB](https://lrclib.net/docs) when local lyrics are unavailable. This option requires `curl` on the system. Ferritone sends the track title, artist, and available album and duration metadata. If the direct lookup has no synchronized lyrics, Ferritone tries looser searches: the title without version notes such as "(Remastered 2011)", "[Live]", or "feat.", the main artist, the title alone, and a free search, stopping at the first synchronized match. Titles and artists are compared without accents or punctuation, and "A & B", "A e B", and "A feat. B" all match A. When a track has no title or artist tags, Ferritone uses names like "Artist - Title" in the file name or the Artist/Album folder layout. Online lyrics are synchronized when the recording's length is within two seconds, on any album; otherwise they are shown as plain text. Audio and file paths stay on the device. Both lyric options are off by default. Online results are kept in memory for the current session.
 
 ## Sleep timer
 
@@ -94,7 +94,7 @@ cp extras/gnome-shell-dock-controls/* ~/.local/share/gnome-shell/extensions/$uui
 
 Log out and back in, then run `gnome-extensions enable $uuid`. The controls use Ferritone's theme and accent color and follow them when you change them in **Preferences**. After updating the extension, log out and back in again so GNOME Shell loads the new version.
 
-While music plays, Ferritone keeps the screen from locking and the computer from sleeping; turn off **Keep the computer awake while playing** in **Preferences → Audio** to allow it.
+While music plays, Ferritone keeps the screen from locking and the computer from sleeping. **Preferences → Audio** has a separate option for each, so you can let the screen lock and still keep the music from stopping.
 
 In **Preferences → Audio**, ReplayGain levels volume using embedded gain tags. **Track gain** suits mixed queues, and **Album gain** preserves the relative level of an album and falls back to track gain when needed. The optional peak protection caps boosting using the file's peak tag. Tracks without gain tags play at their original level.
 

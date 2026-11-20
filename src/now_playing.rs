@@ -166,11 +166,12 @@ impl Player {
                 return;
             }
             let file = path.clone();
-            let online = gio::spawn_blocking(move || Lyrics::lookup_online(&read_track(&file)))
-                .await
-                .ok()
-                .flatten()
-                .unwrap_or_default();
+            let online =
+                gio::spawn_blocking(move || Lyrics::lookup_online(&read_track(&file), &file))
+                    .await
+                    .ok()
+                    .flatten()
+                    .unwrap_or_default();
             let Some(player) = weak
                 .upgrade()
                 .filter(|player| player.lyric_request.get() == request)

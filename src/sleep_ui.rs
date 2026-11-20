@@ -16,9 +16,21 @@ impl Player {
         }
     }
 
-    /// Called from `poll`: asks the session not to lock or suspend while music plays.
+    /// Called from `poll`: asks the session not to lock the screen or suspend while music
+    /// plays, as chosen in Preferences.
     pub(crate) fn update_inhibit(&self) {
-        let wanted = self.playing.get() && !self.state.borrow().allow_sleep;
+        let flags = {
+            let state = self.state.borrow();
+            let mut flags = gtk::ApplicationInhibitFlags::empty();
+            if !state.allow_screen_lock {
+                flags |= gtk::ApplicationInhibitFlags::IDLE;
+            }
+            if !state.allow_sleep {
+                flags |= gtk::ApplicationInhibitFlags::SUSPEND;
+            }
+            flags
+        };
+        let wanted = self.playing.get() && !flags.is_empty();
         let cookie = self.inhibit_cookie.get();
         let Some(app) = self.window.application() else {
             return;
@@ -26,7 +38,7 @@ impl Player {
         if wanted && cookie == 0 {
             let cookie = app.inhibit(
                 Some(&self.window),
-                gtk::ApplicationInhibitFlags::IDLE | gtk::ApplicationInhibitFlags::SUSPEND,
+                flags,
                 Some(self.text("Playing music", "Tocando música")),
             );
             self.inhibit_cookie.set(cookie);
@@ -34,6 +46,17 @@ impl Player {
             app.uninhibit(cookie);
             self.inhibit_cookie.set(0);
         }
+    }
+
+    /// Applies changed lock or suspend preferences to the current inhibition.
+    pub(crate) fn refresh_inhibit(&self) {
+        let cookie = self.inhibit_cookie.replace(0);
+        if cookie != 0 {
+            if let Some(app) = self.window.application() {
+                app.uninhibit(cookie);
+            }
+        }
+        self.update_inhibit();
     }
 
     /// Called from `poll`: fades and pauses when a timed sleep is due.

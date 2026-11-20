@@ -230,11 +230,9 @@ ListenBrainz user token	Token de usuario de ListenBrainz	Jeton utilisateur Liste
 Submit listens to ListenBrainz	Enviar escuchas a ListenBrainz	Envoyer les écoutes à ListenBrainz
 This token is not valid.	Este token no es válido.	Ce jeton n’est pas valide.
 User token	Token de usuario	Jeton utilisateur
-Keep the computer awake while playing	Mantener el equipo activo durante la reproducción	Garder l’ordinateur actif pendant la lecture
 Open on this computer	Abrir en este equipo	Ouvrir sur cet ordinateur
 Open the remote page in this computer's browser	Abre la página del control en el navegador de este equipo	Ouvre la page de la télécommande dans le navigateur de cet ordinateur
 Playing music	Reproduciendo música	Lecture de musique
-Stops the screen from locking and the computer from sleeping while music plays	Evita que la pantalla se bloquee y que el equipo se suspenda mientras suena música	Empêche l’écran de se verrouiller et l’ordinateur de se mettre en veille pendant la lecture
 On this computer, open {} in any browser while Ferritone is open.	En este equipo, abre {} en cualquier navegador mientras Ferritone esté abierto.	Sur cet ordinateur, ouvrez {} dans n’importe quel navigateur tant que Ferritone est ouvert.
 Browser shortcut	Acceso directo en el navegador	Raccourci dans le navigateur
 Open the player by typing ferritone in your browser while Ferritone is open.	Abre el reproductor escribiendo ferritone en el navegador mientras Ferritone esté abierto.	Ouvrez le lecteur en tapant ferritone dans le navigateur tant que Ferritone est ouvert.
@@ -250,3 +248,6 @@ QR code for the remote control	Código QR del control remoto	Code QR de la tél�
 Scan the code with the camera of a phone or tablet. It must be on the same Wi-Fi network as this computer.	Escanea el código con la cámara de un móvil o una tableta. Debe estar en la misma red Wi-Fi que este equipo.	Scannez le code avec l’appareil photo d’un téléphone ou d’une tablette. Il doit être sur le même réseau Wi-Fi que cet ordinateur.
 Disconnect devices that have the current link	Desconecta los dispositivos que tienen el enlace actual	Déconnecte les appareils qui ont le lien actuel
 The remote control could not start.	No se pudo iniciar el control remoto.	Impossible de démarrer la télécommande.
+Keep the screen from locking while playing	No dejar que la pantalla se bloquee durante la reproducción	Empêcher l’écran de se verrouiller pendant la lecture
+Keep the computer from sleeping while playing	No dejar que el equipo se suspenda durante la reproducción	Empêcher l’ordinateur de se mettre en veille pendant la lecture
+Suspending would stop the music	La suspensión detendría la música	La mise en veille arrêterait la musique

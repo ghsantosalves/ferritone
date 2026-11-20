@@ -90,6 +90,7 @@ impl Player {
         let Some(track) = track else { return };
         self.message("");
         self.failures.borrow_mut().started();
+        self.play_counted.set(false);
         self.cancel_handoff();
         let _ = self.pipeline.set_state(gst::State::Null);
         if let Some(waveform) = &self.waveform {
@@ -363,6 +364,7 @@ impl Player {
         self.plan_handoff();
         self.poll_remote();
         self.poll_sleep();
+        self.count_play();
         self.update_position();
         self.update_transport();
         // Keep the resume point recent in case the session ends without closing the window.
@@ -422,6 +424,7 @@ impl Player {
         self.pending_seek.set(0);
         self.pending_seek_signal.set(false);
         self.failures.borrow_mut().started();
+        self.play_counted.set(false);
         self.load_current_track();
         self.update_transport();
         self.refresh_track_highlight();

@@ -35,6 +35,10 @@ pub struct Library {
     pub remote_enabled: bool,
     /// The secret in the phone remote's link; kept so a bookmarked link keeps working.
     pub remote_token: String,
+    /// How many times each track has been played past the halfway point.
+    pub play_counts: BTreeMap<PathBuf, u32>,
+    /// When each track was last played, in seconds since the Unix epoch.
+    pub last_played: BTreeMap<PathBuf, u64>,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
@@ -475,6 +479,37 @@ impl Library {
         }
     }
 
+    pub fn record_play(&mut self, track: &Path, now: u64) {
+        *self.play_counts.entry(track.to_path_buf()).or_default() += 1;
+        self.last_played.insert(track.to_path_buf(), now);
+    }
+
+    /// The most played tracks, ties broken by the most recent play.
+    pub fn most_played(&self, limit: usize) -> Vec<PathBuf> {
+        let mut tracks: Vec<_> = self.play_counts.iter().collect();
+        tracks.sort_by(|(a, a_count), (b, b_count)| {
+            b_count
+                .cmp(a_count)
+                .then_with(|| self.last_played.get(*b).cmp(&self.last_played.get(*a)))
+        });
+        tracks
+            .into_iter()
+            .take(limit)
+            .map(|(track, _)| track.clone())
+            .collect()
+    }
+
+    /// The tracks played most recently, newest first.
+    pub fn recently_played(&self, limit: usize) -> Vec<PathBuf> {
+        let mut tracks: Vec<_> = self.last_played.iter().collect();
+        tracks.sort_by(|(_, a), (_, b)| b.cmp(a));
+        tracks
+            .into_iter()
+            .take(limit)
+            .map(|(track, _)| track.clone())
+            .collect()
+    }
+
     pub fn load(path: &Path) -> io::Result<Self> {
         let mut library: Self = match fs::read(path) {
             Ok(bytes) => serde_json::from_slice(&bytes).map_err(io::Error::other)?,
@@ -540,6 +575,20 @@ struct ResumePoint {
 
 fn resume_path(library: &Path) -> PathBuf {
     library.with_file_name("position.json")
+}
+
+/// The newest files among `tracks` by modification time, newest first; unreadable files are skipped.
+pub fn recently_added(tracks: &[PathBuf], limit: usize) -> Vec<PathBuf> {
+    let mut dated: Vec<_> = tracks
+        .iter()
+        .filter_map(|track| Some((fs::metadata(track).ok()?.modified().ok()?, track)))
+        .collect();
+    dated.sort_by(|(a, _), (b, _)| b.cmp(a));
+    dated
+        .into_iter()
+        .take(limit)
+        .map(|(_, track)| track.clone())
+        .collect()
 }
 
 pub fn data_path() -> PathBuf {
@@ -761,6 +810,41 @@ mod tests {
 
         fs::write(resume_path(&path), b"not json").unwrap();
         assert!(Library::load(&path).is_ok());
+    }
+
+    #[test]
+    fn play_history_ranks_most_and_recently_played_tracks() {
+        let mut library = Library::default();
+        let (a, b, c) = (Path::new("a"), Path::new("b"), Path::new("c"));
+        library.record_play(a, 10);
+        library.record_play(b, 20);
+        library.record_play(a, 30);
+        library.record_play(c, 40);
+        assert_eq!(library.play_counts[a], 2);
+        assert_eq!(library.most_played(2), [a, c]);
+        assert_eq!(library.recently_played(10), [c, a, b]);
+    }
+
+    #[test]
+    fn recently_added_orders_files_by_modification_time() {
+        use std::time::{Duration, SystemTime};
+        let directory = tempfile::tempdir().unwrap();
+        let tracks: Vec<_> = ["old", "new", "middle"]
+            .iter()
+            .zip([100, 300, 200])
+            .map(|(name, age)| {
+                let path = directory.path().join(name);
+                let file = fs::File::create(&path).unwrap();
+                file.set_modified(SystemTime::now() - Duration::from_secs(age))
+                    .unwrap();
+                path
+            })
+            .collect();
+        let missing = directory.path().join("missing");
+        let mut all = tracks.clone();
+        all.push(missing);
+        let newest = recently_added(&all, 2);
+        assert_eq!(newest, [tracks[0].clone(), tracks[2].clone()]);
     }
 
     #[test]

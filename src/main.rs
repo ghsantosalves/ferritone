@@ -19,6 +19,7 @@ mod search;
 mod search_ui;
 mod settings_ui;
 mod sleep_ui;
+mod smart_lists;
 mod table;
 mod track_list;
 mod track_menu;
@@ -162,6 +163,8 @@ struct Player {
     /// The cover last sent to the phone.
     remote_cover: RefCell<Option<gdk::Texture>>,
     sleep: Cell<playback::SleepTimer>,
+    /// Whether the current track's play has been counted.
+    play_counted: Cell<bool>,
     /// The volume last given to the pipeline, after any sleep fade.
     applied_volume: Cell<f64>,
 }
@@ -421,6 +424,7 @@ fn build(app: &gtk::Application) {
         remote_ticks: Cell::new(0),
         remote_cover: RefCell::new(None),
         sleep: Cell::new(playback::SleepTimer::Off),
+        play_counted: Cell::new(false),
         applied_volume: Cell::new(0.7),
     });
 

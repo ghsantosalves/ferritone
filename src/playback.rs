@@ -88,6 +88,17 @@ impl Autosave {
     }
 }
 
+/// A play counts once a track passes half its length or four minutes, whichever comes first,
+/// the rule ListenBrainz and Last.fm use. Without a known length, thirty seconds count.
+pub fn counts_as_play(position_ms: u64, duration_ms: u64) -> bool {
+    let threshold = if duration_ms > 0 {
+        (duration_ms / 2).min(240_000)
+    } else {
+        30_000
+    };
+    position_ms >= threshold
+}
+
 /// The volume fades out over this long before the sleep timer pauses playback.
 pub const SLEEP_FADE: Duration = Duration::from_secs(30);
 
@@ -179,6 +190,15 @@ pub fn resolve(queue: &[PathBuf], index: usize, track: &Path) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_play_counts_at_half_the_track_or_four_minutes() {
+        assert!(!counts_as_play(89_999, 180_000));
+        assert!(counts_as_play(90_000, 180_000));
+        assert!(counts_as_play(240_000, 3_600_000));
+        assert!(!counts_as_play(239_999, 3_600_000));
+        assert!(counts_as_play(30_000, 0));
+    }
 
     #[test]
     fn sleep_timer_fades_out_then_expires() {

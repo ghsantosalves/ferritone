@@ -47,6 +47,7 @@ impl Player {
         self.content.append(&actions);
 
         self.new_playlist_drop_zone();
+        self.smart_lists();
         let header = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         header.add_css_class("page-actions");
         let label = gtk::Label::new(Some(

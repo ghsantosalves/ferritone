@@ -88,6 +88,49 @@ impl Autosave {
     }
 }
 
+/// The volume fades out over this long before the sleep timer pauses playback.
+pub const SLEEP_FADE: Duration = Duration::from_secs(30);
+
+/// Pauses playback after a while or at the end of the current track.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub enum SleepTimer {
+    #[default]
+    Off,
+    At(Instant),
+    EndOfTrack,
+}
+
+impl SleepTimer {
+    pub fn after(now: Instant, minutes: u64) -> Self {
+        Self::At(now + Duration::from_secs(minutes * 60))
+    }
+
+    /// Whether a timed sleep is due now.
+    pub fn expired(self, now: Instant) -> bool {
+        matches!(self, Self::At(deadline) if now >= deadline)
+    }
+
+    /// How much of the chosen volume to keep: 1 until the fade starts, then down to 0.
+    pub fn volume_factor(self, now: Instant) -> f64 {
+        let Self::At(deadline) = self else { return 1.0 };
+        let left = deadline.saturating_duration_since(now);
+        (left.as_secs_f64() / SLEEP_FADE.as_secs_f64()).clamp(0.0, 1.0)
+    }
+
+    /// Whole minutes left, rounded up, for display.
+    pub fn minutes_left(self, now: Instant) -> Option<u64> {
+        let Self::At(deadline) = self else {
+            return None;
+        };
+        Some(
+            deadline
+                .saturating_duration_since(now)
+                .as_secs()
+                .div_ceil(60),
+        )
+    }
+}
+
 /// Hands the next track to GStreamer before the current one ends, for playback without gaps.
 ///
 /// The UI thread plans the next track; GStreamer's streaming thread takes it when the current
@@ -136,6 +179,40 @@ pub fn resolve(queue: &[PathBuf], index: usize, track: &Path) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sleep_timer_fades_out_then_expires() {
+        let start = Instant::now();
+        let timer = SleepTimer::after(start, 30);
+        assert_eq!(timer.minutes_left(start), Some(30));
+        assert_eq!(
+            timer.minutes_left(start + Duration::from_secs(61)),
+            Some(29)
+        );
+        let fade_start = start + Duration::from_secs(30 * 60) - SLEEP_FADE;
+        assert_eq!(
+            timer.volume_factor(fade_start - Duration::from_secs(1)),
+            1.0
+        );
+        let halfway = timer.volume_factor(fade_start + SLEEP_FADE / 2);
+        assert!((halfway - 0.5).abs() < 1e-6);
+        assert!(!timer.expired(fade_start));
+        assert!(timer.expired(start + Duration::from_secs(30 * 60)));
+        assert_eq!(
+            timer.volume_factor(start + Duration::from_secs(31 * 60)),
+            0.0
+        );
+    }
+
+    #[test]
+    fn sleep_at_end_of_track_never_fades_or_expires_by_time() {
+        let now = Instant::now();
+        for timer in [SleepTimer::Off, SleepTimer::EndOfTrack] {
+            assert!(!timer.expired(now + Duration::from_secs(86_400)));
+            assert_eq!(timer.volume_factor(now), 1.0);
+            assert_eq!(timer.minutes_left(now), None);
+        }
+    }
 
     #[test]
     fn handoff_reports_the_switch_once() {

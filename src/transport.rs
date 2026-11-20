@@ -279,6 +279,11 @@ impl Player {
         if let Some(bus) = self.pipeline.bus() {
             while let Some(message) = bus.pop() {
                 match message.view() {
+                    gst::MessageView::Eos(..)
+                        if self.sleep.get() == playback::SleepTimer::EndOfTrack =>
+                    {
+                        self.sleep_at_track_end();
+                    }
                     gst::MessageView::Eos(..) => {
                         let index = self.state.borrow().next_index(1, true);
                         if let Some(index) = index {
@@ -357,6 +362,7 @@ impl Player {
         }
         self.plan_handoff();
         self.poll_remote();
+        self.poll_sleep();
         self.update_position();
         self.update_transport();
         // Keep the resume point recent in case the session ends without closing the window.
@@ -375,7 +381,9 @@ impl Player {
     }
 
     pub(crate) fn plan_handoff(&self) {
-        let next = if self.active.get() {
+        // Stopping at the end of the track means nothing follows it.
+        let stop_after = self.sleep.get() == playback::SleepTimer::EndOfTrack;
+        let next = if self.active.get() && !stop_after {
             let state = self.state.borrow();
             state
                 .next_index(1, true)

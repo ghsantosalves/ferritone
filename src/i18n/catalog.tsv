@@ -200,3 +200,10 @@ Scan the code with your phone's camera. The phone must be on the same Wi-Fi netw
 New link	Nuevo enlace	Nouveau lien
 Disconnect phones that have the current link	Desconecta los móviles que tienen el enlace actual	Déconnecte les téléphones qui ont le lien actuel
 The phone remote could not start.	No se pudo iniciar el control desde el móvil.	Impossible de démarrer la télécommande sur téléphone.
+Sleep timer	Temporizador de apagado	Minuterie de mise en veille
+The sleep timer paused playback.	El temporizador pausó la reproducción.	La minuterie a mis la lecture en pause.
+Playback will pause at the end of this track.	La reproducción se pausará al final de esta pista.	La lecture se mettra en pause à la fin de cette piste.
+Playback will pause in {} min.	La reproducción se pausará en {} min.	La lecture se mettra en pause dans {} min.
+{} minutes	{} minutos	{} minutes
+End of current track	Final de la pista actual	Fin de la piste en cours
+The sleep timer is off.	El temporizador está apagado.	La minuterie est désactivée.

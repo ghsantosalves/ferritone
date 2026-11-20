@@ -18,6 +18,7 @@ mod replay_gain;
 mod search;
 mod search_ui;
 mod settings_ui;
+mod sleep_ui;
 mod table;
 mod track_list;
 mod track_menu;
@@ -160,6 +161,9 @@ struct Player {
     remote_ticks: Cell<u32>,
     /// The cover last sent to the phone.
     remote_cover: RefCell<Option<gdk::Texture>>,
+    sleep: Cell<playback::SleepTimer>,
+    /// The volume last given to the pipeline, after any sleep fade.
+    applied_volume: Cell<f64>,
 }
 
 fn main() -> glib::ExitCode {
@@ -416,6 +420,8 @@ fn build(app: &gtk::Application) {
         remote_receiver,
         remote_ticks: Cell::new(0),
         remote_cover: RefCell::new(None),
+        sleep: Cell::new(playback::SleepTimer::Off),
+        applied_volume: Cell::new(0.7),
     });
 
     let top = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -642,6 +648,20 @@ fn build(app: &gtk::Application) {
             ));
             let popup = navigation_popup.downgrade();
             sections.append(&shortcut_button(
+                player.text("Sleep timer", "Timer para desligar"),
+                "",
+                None,
+                false,
+                &player,
+                move |player| {
+                    if let Some(popup) = popup.upgrade() {
+                        popup.popdown();
+                    }
+                    player.show_sleep_timer();
+                },
+            ));
+            let popup = navigation_popup.downgrade();
+            sections.append(&shortcut_button(
                 player.text("Phone remote", "Controle pelo celular"),
                 "",
                 None,
@@ -762,11 +782,9 @@ fn build(app: &gtk::Application) {
         }
     });
     let weak = Rc::downgrade(&player);
-    player.volume.connect_value_changed(move |slider| {
+    player.volume.connect_value_changed(move |_| {
         if let Some(player) = weak.upgrade() {
-            player
-                .pipeline
-                .set_property("volume", slider.value() / 100.0);
+            player.apply_volume();
         }
     });
 

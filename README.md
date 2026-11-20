@@ -58,6 +58,10 @@ Drag the timed lyrics up or down in the main player or mini player. Release when
 
 Enable **Look up lyrics online** separately to search [LRCLIB](https://lrclib.net/docs) when local lyrics are unavailable. This option requires `curl` on the system. Ferritone sends the track title, artist, and available album and duration metadata. If the direct lookup has no synchronized lyrics, Ferritone checks alternate results for a compatible recording before falling back to plain text. The alternate search compares artist and title without accents or punctuation. Online lyrics are synchronized when durations are within two seconds and available album tags agree. A result from another edition can still be read as plain lyrics in the mini player. Audio and file paths stay on the device. Both lyric options are off by default. Online results are kept in memory for the current session.
 
+## Sleep timer
+
+Open **Sleep timer** in the playback menu to pause playback after 15 to 90 minutes or at the end of the current track. A timed sleep lowers the volume gradually over the last 30 seconds, then pauses and restores the volume. Stopping at the end of a track leaves the next track ready, so **Play** continues from there.
+
 ## Phone remote
 
 Open **Phone remote** in the playback menu and turn on **Allow control from a phone**. Scan the QR code with your phone's camera to open a page in the phone's browser that plays and pauses, skips tracks, seeks, changes the volume, shuffle, and repeat, and plays any track in the queue or any saved playlist. The phone must be on the same network as the computer; nothing goes through the internet.

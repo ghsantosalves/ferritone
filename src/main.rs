@@ -7,6 +7,7 @@ mod lyrics_view;
 mod metadata;
 mod mini;
 mod mpris;
+mod playback;
 mod playlist_file;
 mod replay_gain;
 mod search;
@@ -43,9 +44,6 @@ const SORT_COLUMNS: [TrackSort; 4] = [
 type LibraryRefresh = Rc<dyn Fn(&str)>;
 type PlaylistIndicator = (usize, glib::WeakRef<gtk::Box>, glib::WeakRef<gtk::Image>);
 const APP_ID: &str = "io.github.rustmusicplayer.Player";
-const AUTOSAVE_INTERVAL: Duration = Duration::from_secs(30);
-// Stop skipping after this many tracks in a row fail, so a broken audio setup does not walk the queue.
-const MAX_SKIPS: usize = 5;
 
 #[derive(Clone, Copy, PartialEq)]
 enum Page {
@@ -138,12 +136,10 @@ struct Player {
     pending_seek: Cell<u64>,
     pending_seek_signal: Cell<bool>,
     importing: Cell<bool>,
-    /// Consecutive tracks that failed to play; skipping stops after `MAX_SKIPS` or the whole queue.
-    failed_in_row: Cell<usize>,
-    /// Queue index of the first track in the current failure run, kept as the resume point.
-    failed_from: Cell<usize>,
-    /// Last time the playback position was saved while playing.
-    last_autosave: Cell<Instant>,
+    /// Consecutive tracks that failed to play.
+    failures: RefCell<playback::Failures>,
+    /// When the playback position is next due to be saved while playing.
+    autosave: RefCell<playback::Autosave>,
 }
 
 fn main() -> glib::ExitCode {
@@ -380,9 +376,8 @@ fn build(app: &gtk::Application) {
         pending_seek: Cell::new(0),
         pending_seek_signal: Cell::new(false),
         importing: Cell::new(false),
-        failed_in_row: Cell::new(0),
-        failed_from: Cell::new(0),
-        last_autosave: Cell::new(Instant::now()),
+        failures: RefCell::default(),
+        autosave: RefCell::new(playback::Autosave::new(Instant::now())),
     });
 
     let top = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -953,7 +948,7 @@ impl Player {
     }
 
     fn save(&self) {
-        self.last_autosave.set(Instant::now());
+        self.autosave.borrow_mut().saved(Instant::now());
         if let Some(path) = &self.storage {
             if let Err(error) = self.state.borrow().save(path) {
                 eprintln!("Could not save library: {error}");
@@ -3718,8 +3713,7 @@ impl Player {
         let track = self.state.borrow().queue.get(index).cloned();
         let Some(track) = track else { return };
         self.message("");
-        // A new track starts a new failure run; the error handler restores its own count.
-        self.failed_in_row.set(0);
+        self.failures.borrow_mut().started();
         let _ = self.pipeline.set_state(gst::State::Null);
         if let Some(waveform) = &self.waveform {
             waveform.clear();
@@ -3783,9 +3777,7 @@ impl Player {
         if let Some(position) = self.pipeline.query_position::<gst::ClockTime>() {
             let position = position.mseconds();
             self.state.borrow_mut().position_ms = position;
-            if position >= 1000 {
-                self.failed_in_row.set(0);
-            }
+            self.failures.borrow_mut().progressed(position);
         }
     }
 
@@ -3920,43 +3912,48 @@ impl Player {
                     }
                     gst::MessageView::Error(error) => {
                         eprintln!("Playback error: {}", error.error());
-                        let failed = self.failed_in_row.get() + 1;
-                        if failed == 1 {
-                            self.failed_from.set(self.state.borrow().current);
-                        }
-                        let next = {
+                        let decision = {
                             let state = self.state.borrow();
-                            (failed < state.queue.len().min(MAX_SKIPS))
-                                .then(|| state.next_index(1, false))
-                                .flatten()
+                            let has_next = state.next_index(1, false).is_some();
+                            self.failures.borrow_mut().failed(
+                                state.current,
+                                state.queue.len(),
+                                has_next,
+                            )
                         };
-                        if let Some(index) = next {
-                            self.start(index, 0);
-                            self.failed_in_row.set(failed);
-                            self.message(self.text(
-                                "Skipped a track that could not be played.",
-                                "Uma faixa que não pôde ser tocada foi pulada.",
-                            ));
-                        } else {
-                            if failed > 1 {
-                                // Keep the resume point on the first track that failed.
-                                self.state.borrow_mut().current = self.failed_from.get();
-                                self.load_current_track();
-                                self.refresh_track_highlight();
+                        match decision {
+                            playback::OnError::Skip => {
+                                let count = self.failures.borrow().count();
+                                let next = self.state.borrow().next_index(1, false);
+                                if let Some(index) = next {
+                                    self.start(index, 0);
+                                }
+                                self.failures.borrow_mut().skipped(count);
+                                self.message(self.text(
+                                    "Skipped a track that could not be played.",
+                                    "Uma faixa que não pôde ser tocada foi pulada.",
+                                ));
                             }
-                            self.stop();
-                            self.update_transport();
-                            self.message(if failed > 1 {
-                                self.text(
-                                    "Several tracks in a row could not be played. Check your audio output.",
-                                    "Várias faixas seguidas não puderam ser tocadas. Verifique a saída de áudio.",
-                                )
-                            } else {
-                                self.text(
-                                    "This track could not be played.",
-                                    "Não foi possível tocar esta faixa.",
-                                )
-                            });
+                            playback::OnError::GiveUp { resume, several } => {
+                                if several {
+                                    self.state.borrow_mut().current = resume;
+                                    self.load_current_track();
+                                    self.refresh_track_highlight();
+                                }
+                                self.stop();
+                                self.update_transport();
+                                self.message(if several {
+                                    self.text(
+                                        "Several tracks in a row could not be played. Check your audio output.",
+                                        "Várias faixas seguidas não puderam ser tocadas. Verifique a saída de áudio.",
+                                    )
+                                } else {
+                                    self.text(
+                                        "This track could not be played.",
+                                        "Não foi possível tocar esta faixa.",
+                                    )
+                                });
+                            }
                         }
                         // Later messages belong to the failed pipeline run.
                         break;
@@ -3981,7 +3978,7 @@ impl Player {
         self.update_position();
         self.update_transport();
         // Keep the resume point recent in case the session ends without closing the window.
-        if self.playing.get() && self.last_autosave.get().elapsed() >= AUTOSAVE_INTERVAL {
+        if self.autosave.borrow().due(Instant::now(), self.playing.get()) {
             self.save();
         }
         if self.window.is_mapped() {

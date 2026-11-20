@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.0" date="2026-11-20">
+      <description>
+        <p>Control Ferritone from a phone or tablet: scan a QR code to play, pause, skip, seek, and browse the queue, the whole library, and playlists in the browser, or play the music on that device itself. On the computer, the same page opens at localhost. Browse the library by album and artist with covers, play smart lists of recently added, recently played, and most played tracks, and let tracks follow each other without a gap. New folders and files in the library appear on their own. A sleep timer pauses playback, the screen and computer stay awake while music plays, listens can be sent to ListenBrainz, and synchronized lyrics are found for many more songs. The System theme follows the desktop as it changes, and the remote page and dock controls use Ferritone's colors.</p>
+      </description>
+    </release>
     <release version="0.1.4" date="2026-11-20">
       <description>
         <p>Ferritone now uses the app ID io.github.ghsantosalves.Ferritone and can be built as a Flatpak. Your library, playlists, and settings are kept. If you pinned Ferritone to the dock, pin it again after updating.</p>

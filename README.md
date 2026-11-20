@@ -12,7 +12,7 @@ sudo apt install ./ferritone_0.1.4-1.trixie1_amd64.deb
 
 Open **Ferritone** from the application menu. To update, install the `.deb` from a newer release the same way. To uninstall, run `sudo apt remove ferritone`.
 
-On other distributions, [build from source](#build).
+On other distributions, download the `.flatpak` file from the same release and install it with `flatpak install --user ./Ferritone-<version>-x86_64.flatpak`, or [build from source](#build).
 
 ## Get started
 
@@ -134,7 +134,7 @@ packaging/build-deb.sh
 
 The package is written to `target/dist/`. It includes the AppStream metadata, desktop entry, icon, and the license notices of every bundled Rust crate.
 
-To publish a release, update the version in `Cargo.toml` and add a `<release>` entry to `assets/io.github.ghsantosalves.Ferritone.metainfo.xml`, then push a matching tag such as `v0.1.3`. The Release workflow builds the package on Debian 13 and opens a draft GitHub release with the `.deb`, `SHA256SUMS`, and notes taken from the metainfo entry. Review the draft and publish it.
+To publish a release, update the version in `Cargo.toml` and add a `<release>` entry to `assets/io.github.ghsantosalves.Ferritone.metainfo.xml`, then push a matching tag such as `v0.1.3`. The Release workflow builds the package on Debian 13 and opens a draft GitHub release with the `.deb`, a `.flatpak` bundle, `SHA256SUMS`, and notes taken from the metainfo entry. Run the workflow by hand from the Actions tab to test both builds without publishing. Review the draft and publish it.
 
 ## Data and playlists
 

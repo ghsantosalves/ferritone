@@ -1,9 +1,11 @@
 name: Release
 
-# Push a tag such as v0.1.3 to build the Debian package and open a draft release.
+# Push a tag such as v0.1.5 to build the Debian package and the Flatpak bundle and open a draft release.
 on:
   push:
     tags: ['v*']
+  # Run by hand to test both builds without publishing anything.
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,10 +20,11 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             ca-certificates git build-essential pkgconf cargo rustc python3 \
-            dpkg-dev gh libglib2.0-dev-bin libgtk-4-dev libgstreamer1.0-dev \
+            dpkg-dev libglib2.0-dev-bin libgtk-4-dev libgstreamer1.0-dev \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good
       - uses: actions/checkout@v7
       - name: Check that the tag matches Cargo.toml
+        if: startsWith(github.ref, 'refs/tags/')
         run: |
           version=$(cargo metadata --locked --no-deps --format-version=1 |
             python3 -c 'import json,sys; print(json.load(sys.stdin)["packages"][0]["version"])')
@@ -29,35 +32,82 @@ jobs:
             echo "Tag $GITHUB_REF_NAME does not match version $version in Cargo.toml." >&2
             exit 1
           fi
-          echo "VERSION=$version" >> "$GITHUB_ENV"
       - name: Build the package
         run: packaging/build-deb.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: deb
+          path: target/dist/*.deb
+
+  flatpak:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install Flatpak tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          # Ubuntu blocks the unprivileged user namespaces that flatpak-builder's sandbox needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Build the bundle
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse \
+            --force-clean --repo=repo build-flatpak packaging/flatpak/io.github.ghsantosalves.Ferritone.yml
+          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            repo Ferritone.flatpak io.github.ghsantosalves.Ferritone master
+      - uses: actions/upload-artifact@v7
+        with:
+          name: flatpak
+          path: Ferritone.flatpak
+
+  release:
+    needs: [deb, flatpak]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          path: dist
+          merge-multiple: true
       - name: Prepare release assets
         run: |
-          cd target/dist
+          version=${GITHUB_REF_NAME#v}
+          cd dist
           # GitHub replaces "~" in asset names with ".", so name the file the way it will be served.
-          asset="ferritone_${VERSION}-1.trixie1_amd64.deb"
-          cp "ferritone_${VERSION}-1~trixie1_amd64.deb" "$asset"
-          sha256sum "$asset" > SHA256SUMS
-          echo "ASSET=$asset" >> "$GITHUB_ENV"
+          deb="ferritone_${version}-1.trixie1_amd64.deb"
+          mv "ferritone_${version}-1~trixie1_amd64.deb" "$deb"
+          flatpak="Ferritone-${version}-x86_64.flatpak"
+          mv Ferritone.flatpak "$flatpak"
+          sha256sum "$deb" "$flatpak" > SHA256SUMS
+          {
+            echo "VERSION=$version"
+            echo "DEB=$deb"
+            echo "FLATPAK=$flatpak"
+          } >> "$GITHUB_ENV"
       - name: Write release notes
         run: |
           python3 - <<'PY' > notes.md
           import os, xml.etree.ElementTree as ET
-          version = os.environ["VERSION"]
-          asset = os.environ["ASSET"]
+          version, deb, flatpak = os.environ["VERSION"], os.environ["DEB"], os.environ["FLATPAK"]
           root = ET.parse("assets/io.github.ghsantosalves.Ferritone.metainfo.xml").getroot()
           release = root.find(f"releases/release[@version='{version}']")
           summary = " ".join(p.text.strip() for p in release.iter("p")) if release is not None else ""
           print("## What's new\n")
           print(summary or "_Describe the changes in this release._")
-          print("\n## Install (Debian 13 trixie, amd64)\n")
-          print(f"```sh\nsudo apt install ./{asset}\n```\n")
-          print("This upgrades earlier versions in place; your library and playlists are kept. "
-                "Verify the download with `sha256sum -c SHA256SUMS`.\n")
+          print("\n## Install on any Linux distribution (Flatpak)\n")
+          print("Download the `.flatpak` file and open it with your software center, or run:\n")
+          print(f"```sh\nflatpak install --user ./{flatpak}\n```\n")
+          print("Flatpak downloads the GNOME runtime from Flathub the first time. The Flatpak keeps its own "
+                "library, separate from the Debian package. Install newer releases the same way to update.\n")
+          print("## Install on Debian 13 trixie (amd64)\n")
+          print(f"```sh\nsudo apt install ./{deb}\n```\n")
+          print("This upgrades earlier versions in place; your library and playlists are kept.\n")
+          print("Verify either download with `sha256sum -c SHA256SUMS --ignore-missing`.\n")
           print("## Source\n")
           print("Ferritone is licensed under GPL-3.0-only. The source code for this release is in the "
-                "archives below, and `packaging/build-deb.sh` builds the package.")
+                "archives below; `packaging/build-deb.sh` and `packaging/flatpak/` build the packages.")
           PY
       - name: Create a draft release
         env:
@@ -65,4 +115,4 @@ jobs:
         run: |
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft \
             --title "Ferritone $VERSION" --notes-file notes.md \
-            "target/dist/$ASSET" target/dist/SHA256SUMS
+            "dist/$DEB" "dist/$FLATPAK" dist/SHA256SUMS

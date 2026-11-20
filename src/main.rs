@@ -1,3 +1,5 @@
+mod album_pages;
+mod albums;
 mod equalizer;
 mod files;
 mod i18n;
@@ -43,7 +45,7 @@ use library::{
     Accent, Language, Library, Playlist, Repeat, Theme, TrackSort, ViewOptions, collect_tracks,
     data_path, title,
 };
-use metadata::{TrackInfo, read_cover_image, read_track};
+use metadata::{TrackInfo, read_cover_image, read_cover_thumbnail, read_track};
 use search::{SearchBar, SearchVisibility};
 use table::TrackColumns;
 
@@ -62,6 +64,12 @@ const APP_ID: &str = "io.github.ghsantosalves.Ferritone";
 enum Page {
     Home,
     Library,
+    Albums,
+    /// The album in `Player::selected_album`.
+    Album,
+    Artists,
+    /// The artist in `Player::selected_artist`.
+    Artist,
     Playlists,
     Queue,
     Playlist(usize),
@@ -168,6 +176,10 @@ struct Player {
     play_counted: Cell<bool>,
     /// Watches the library folders for added and removed files.
     library_monitors: RefCell<Vec<gio::FileMonitor>>,
+    selected_album: RefCell<albums::AlbumKey>,
+    selected_artist: RefCell<String>,
+    /// Album cover thumbnails by the album's first track; `None` when it has no cover.
+    album_covers: RefCell<HashMap<PathBuf, Option<gdk::Texture>>>,
     library_rescan_timer: RefCell<Option<glib::SourceId>>,
     library_scanning: Cell<bool>,
     library_rescan_again: Cell<bool>,
@@ -432,6 +444,9 @@ fn build(app: &gtk::Application) {
         sleep: Cell::new(playback::SleepTimer::Off),
         play_counted: Cell::new(false),
         library_monitors: RefCell::default(),
+        selected_album: RefCell::default(),
+        selected_artist: RefCell::default(),
+        album_covers: RefCell::default(),
         library_rescan_timer: RefCell::new(None),
         library_scanning: Cell::new(false),
         library_rescan_again: Cell::new(false),
@@ -580,6 +595,8 @@ fn build(app: &gtk::Application) {
             for (page, en, pt) in [
                 (Page::Home, "Home", "Início"),
                 (Page::Library, "Library", "Biblioteca"),
+                (Page::Albums, "Albums", "Álbuns"),
+                (Page::Artists, "Artists", "Artistas"),
                 (Page::Playlists, "Playlists", "Listas de reprodução"),
                 (Page::Queue, "Queue", "Fila"),
                 (Page::Preferences, "Preferences", "Preferências"),
@@ -1071,7 +1088,7 @@ impl Player {
                 Page::Library => self.library_search.borrow_mut().clear(),
                 Page::Queue => self.queue_query.borrow_mut().clear(),
                 Page::Playlist(_) => self.playlist_query.borrow_mut().1.clear(),
-                Page::Preferences => {}
+                Page::Preferences | Page::Albums | Page::Album | Page::Artists | Page::Artist => {}
             }
         }
         self.columns.replace(None);
@@ -1089,6 +1106,10 @@ impl Player {
         match page {
             Page::Home => self.home(),
             Page::Library => self.library(),
+            Page::Albums => self.albums_page(),
+            Page::Album => self.album_page(),
+            Page::Artists => self.artists_page(),
+            Page::Artist => self.artist_page(),
             Page::Playlists => self.playlists(),
             Page::Queue => self.queue(),
             Page::Playlist(index) => self.playlist(index),

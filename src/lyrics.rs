@@ -323,6 +323,7 @@ mod tests {
             artist: Some("João de Sá".into()),
             album: None,
             duration_ms: Some(182_000),
+            ..Default::default()
         };
         let record = |artist: &str, duration| LyricsRecord {
             track_name: "Cancao Da Manha".into(),

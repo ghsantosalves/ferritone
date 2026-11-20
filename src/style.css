@@ -305,3 +305,15 @@ checkbutton check:checked {
 .library-tracks row:selected .table-row.current {
     background: mix(@player_bg, @player_accent, 0.36);
 }
+
+.album-card {
+  padding: 6px;
+}
+
+.album-cover {
+  border-radius: 8px;
+}
+
+.album-title {
+  font-weight: 700;
+}

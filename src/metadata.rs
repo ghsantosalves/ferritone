@@ -5,7 +5,7 @@ use lofty::{
     file::{AudioFile, TaggedFileExt},
     picture::PictureType,
     probe::Probe,
-    tag::Accessor,
+    tag::{Accessor, ItemKey},
 };
 
 #[derive(Default)]
@@ -14,6 +14,10 @@ pub struct TrackInfo {
     pub artist: Option<String>,
     pub album: Option<String>,
     pub duration_ms: Option<u64>,
+    /// The album's artist, which groups compilations under one name.
+    pub album_artist: Option<String>,
+    pub track_number: Option<u32>,
+    pub disc_number: Option<u32>,
 }
 
 pub fn read_track(path: &Path) -> TrackInfo {
@@ -36,6 +40,11 @@ pub fn read_track(path: &Path) -> TrackInfo {
         artist: text(tag.and_then(Accessor::artist)),
         album: text(tag.and_then(Accessor::album)),
         duration_ms: (duration > 0).then_some(duration),
+        album_artist: text(
+            tag.and_then(|tag| tag.get_string(&ItemKey::AlbumArtist).map(Into::into)),
+        ),
+        track_number: tag.and_then(Accessor::track),
+        disc_number: tag.and_then(Accessor::disk),
     }
 }
 
@@ -86,13 +95,27 @@ impl DecodedImage {
 }
 
 pub fn read_cover_image(path: &Path) -> Option<(DecodedImage, Option<DecodedImage>)> {
+    let image = decode_cover(path, 1440)?;
+    let thumbnail = crate::scale_image(&image, 96)
+        .as_ref()
+        .map(DecodedImage::from_pixbuf);
+    Some((DecodedImage::from_pixbuf(&image), thumbnail))
+}
+
+/// The cover, decoded no larger than `side` pixels, for album grids.
+pub fn read_cover_thumbnail(path: &Path, side: i32) -> Option<DecodedImage> {
+    decode_cover(path, side).map(|image| DecodedImage::from_pixbuf(&image))
+}
+
+fn decode_cover(path: &Path, max_side: i32) -> Option<gtk::gdk_pixbuf::Pixbuf> {
     use gtk::{gdk_pixbuf::PixbufLoader, prelude::*};
     let encoded = read_cover(path)?;
     let loader = PixbufLoader::new();
-    loader.connect_size_prepared(|loader, width, height| {
+    // Decoding straight to the target size is much cheaper than scaling afterwards.
+    loader.connect_size_prepared(move |loader, width, height| {
         let side = width.max(height);
-        if side > 1440 {
-            let scale = 1440.0 / f64::from(side);
+        if side > max_side {
+            let scale = f64::from(max_side) / f64::from(side);
             loader.set_size(
                 (f64::from(width) * scale).round().max(1.0) as i32,
                 (f64::from(height) * scale).round().max(1.0) as i32,
@@ -103,9 +126,5 @@ pub fn read_cover_image(path: &Path) -> Option<(DecodedImage, Option<DecodedImag
     let closed = loader.close();
     written.ok()?;
     closed.ok()?;
-    let image = loader.pixbuf()?;
-    let thumbnail = crate::scale_image(&image, 96)
-        .as_ref()
-        .map(DecodedImage::from_pixbuf);
-    Some((DecodedImage::from_pixbuf(&image), thumbnail))
+    loader.pixbuf()
 }

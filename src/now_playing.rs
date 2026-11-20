@@ -44,7 +44,15 @@ impl Player {
                 if let Some(refresh) = player.library_refresh.borrow().as_ref() {
                     refresh(&player.library_search.borrow());
                 }
-            } else if matches!(page, Page::Queue | Page::Playlist(_)) {
+            } else if matches!(
+                page,
+                Page::Queue
+                    | Page::Playlist(_)
+                    | Page::Albums
+                    | Page::Album
+                    | Page::Artists
+                    | Page::Artist
+            ) {
                 player.show(page);
             }
             player.update_transport();

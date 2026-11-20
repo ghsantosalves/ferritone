@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.rustmusicplayer.Player</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-only</project_license>
+  <name>Ferritone</name>
+  <summary>Play and organize your local music collection</summary>
+  <summary xml:lang="pt-BR">Reproduza e organize sua coleção local de músicas</summary>
+  <developer id="io.github.ghsantosalves">
+    <name>ghsantosalves</name>
+  </developer>
+  <description>
+    <p>Ferritone is a music player for local audio files. Search your library, build playlists by dragging files and folders, and resume your playback queue after restarting the app.</p>
+    <p xml:lang="pt-BR">O Ferritone é um reprodutor de arquivos de áudio locais. Busque na sua biblioteca, crie listas de reprodução arrastando arquivos ou pastas e retome a fila ao reabrir o aplicativo.</p>
+    <p>The mini player can show album art, live audio visualizations, and optional lyrics. Ferritone also provides a ten-band equalizer, ReplayGain, and desktop media controls.</p>
+    <p xml:lang="pt-BR">O miniplayer pode exibir a capa do álbum, visualizações de áudio e letras opcionais. O Ferritone também oferece equalizador de dez bandas, ReplayGain e controles de mídia integrados ao sistema.</p>
+  </description>
+  <launchable type="desktop-id">io.github.rustmusicplayer.Player.desktop</launchable>
+  <provides>
+    <binary>rust-music-player</binary>
+  </provides>
+  <url type="homepage">https://github.com/ghsantosalves/ferritone</url>
+  <url type="bugtracker">https://github.com/ghsantosalves/ferritone/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="0.1.0" date="2026-11-20"/>
+  </releases>
+</component>

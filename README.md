@@ -2,6 +2,18 @@
 
 Ferritone is a Linux desktop music player written in Rust. It organizes local audio into a searchable library, saved playlists, and a playback queue you can resume after restarting the app.
 
+## Install
+
+On Debian 13 (trixie) amd64, download the `.deb` from the [latest release](https://github.com/ghsantosalves/ferritone/releases/latest) and install it with apt, which also pulls in GTK and GStreamer:
+
+```sh
+sudo apt install ./ferritone_0.1.0-1~trixie1_amd64.deb
+```
+
+Open **Ferritone** from the application menu. To update, install the `.deb` from a newer release the same way. To uninstall, run `sudo apt remove ferritone`.
+
+On other distributions, [build from source](#build).
+
 ## Get started
 
 - **Home** shows the first six saved playlists and lets you open a folder, add a folder to the library, or resume the last queue. Search from Home to find a playlist anywhere in the collection. Opening a folder replaces the queue and starts playback. Adding a folder to the library indexes its tracks without changing playback. Both actions include subfolders.
@@ -82,6 +94,16 @@ install -Dm644 LICENSE "$HOME/.local/share/doc/ferritone/LICENSE"
 ```
 
 Open **Ferritone** from the application menu.
+
+## Build the Debian package
+
+On Debian 13 amd64, with the build dependencies above plus `dpkg-dev`, run:
+
+```sh
+packaging/build-deb.sh
+```
+
+The package is written to `target/dist/`. It includes the AppStream metadata, desktop entry, icon, and the license notices of every bundled Rust crate.
 
 ## Data and playlists
 

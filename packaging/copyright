@@ -1,0 +1,21 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: Ferritone
+Source: https://github.com/ghsantosalves/ferritone
+
+Files: *
+Copyright: 2026 ghsantosalves
+License: GPL-3
+
+Files: assets/io.github.rustmusicplayer.Player.metainfo.xml
+Copyright: 2026 ghsantosalves
+License: CC0-1.0
+
+License: GPL-3
+ See /usr/share/common-licenses/GPL-3 for the complete license text.
+
+License: CC0-1.0
+ See https://creativecommons.org/publicdomain/zero/1.0/legalcode for the
+ complete license text.
+
+Comment: The standalone package also includes upstream notices for bundled
+ Rust crates in /usr/share/doc/ferritone/third-party-licenses/.

@@ -94,6 +94,8 @@ struct Player {
     app_icon: gtk::Image,
     content: gtk::Box,
     sidebar: gtk::Box,
+    /// The sidebar's page buttons, to mark the page on screen.
+    sidebar_items: RefCell<Vec<(Page, gtk::Button)>>,
     navigation: gtk::MenuButton,
     columns: RefCell<Option<TrackColumns>>,
     track_rows: RefCell<HashMap<usize, glib::WeakRef<gtk::Box>>>,
@@ -340,6 +342,7 @@ fn build(app: &gtk::Application) {
     let artwork_button = gtk::Button::new();
     artwork_button.set_child(Some(&artwork));
     artwork_button.add_css_class("artwork-button");
+    artwork_button.set_overflow(gtk::Overflow::Hidden);
     artwork_button.set_sensitive(false);
     let sidebar = gtk::Box::new(gtk::Orientation::Vertical, 8);
     sidebar.add_css_class("sidebar");
@@ -356,6 +359,7 @@ fn build(app: &gtk::Application) {
         .filter(|schema| schema.has_key("color-scheme"))
         .map(|schema| gio::Settings::new_full(&schema, gio::SettingsBackend::NONE, None));
     let toggle = gtk::Button::from_icon_name("media-playback-start-symbolic");
+    toggle.add_css_class("play-button");
     let progress = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1.0, 0.1);
     progress.set_draw_value(false);
     progress.set_sensitive(false);
@@ -379,6 +383,7 @@ fn build(app: &gtk::Application) {
         app_icon,
         content,
         sidebar,
+        sidebar_items: RefCell::default(),
         navigation,
         columns: RefCell::new(None),
         track_rows: RefCell::new(HashMap::new()),
@@ -613,18 +618,51 @@ fn build(app: &gtk::Application) {
             let wordmark = gtk::Label::new(Some(APP_NAME));
             wordmark.add_css_class("wordmark");
             player.sidebar.append(&wordmark);
-            for (page, en, pt) in [
-                (Page::Home, "Home", "Início"),
-                (Page::Library, "Library", "Biblioteca"),
-                (Page::Albums, "Albums", "Álbuns"),
-                (Page::Artists, "Artists", "Artistas"),
-                (Page::Playlists, "Playlists", "Listas de reprodução"),
-                (Page::Queue, "Queue", "Fila"),
-                (Page::Preferences, "Preferences", "Preferências"),
+            player.sidebar_items.borrow_mut().clear();
+            for (page, en, pt, icon) in [
+                (Page::Home, "Home", "Início", "go-home-symbolic"),
+                (
+                    Page::Library,
+                    "Library",
+                    "Biblioteca",
+                    "folder-music-symbolic",
+                ),
+                (Page::Albums, "Albums", "Álbuns", "media-optical-symbolic"),
+                (
+                    Page::Artists,
+                    "Artists",
+                    "Artistas",
+                    "avatar-default-symbolic",
+                ),
+                (
+                    Page::Playlists,
+                    "Playlists",
+                    "Listas de reprodução",
+                    "view-list-symbolic",
+                ),
+                (
+                    Page::Queue,
+                    "Queue",
+                    "Fila",
+                    "media-playlist-consecutive-symbolic",
+                ),
+                (
+                    Page::Preferences,
+                    "Preferences",
+                    "Preferências",
+                    "preferences-system-symbolic",
+                ),
             ] {
-                let item = button(player.text(en, pt), &player, move |player| {
-                    player.show(page)
-                });
+                let item = button("", &player, move |player| player.show(page));
+                let line = gtk::Box::new(gtk::Orientation::Horizontal, 10);
+                line.append(&gtk::Image::from_icon_name(icon));
+                let label = gtk::Label::new(Some(player.text(en, pt)));
+                label.set_xalign(0.0);
+                label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                line.append(&label);
+                item.set_child(Some(&line));
+                item.set_tooltip_text(Some(player.text(en, pt)));
+                player.sidebar_items.borrow_mut().push((page, item.clone()));
                 if page == Page::Playlists {
                     player.accept_files(&item, Import::PickPlaylist);
                 }
@@ -1105,6 +1143,20 @@ impl Player {
     fn show(self: &Rc<Self>, page: Page) {
         self.close_track_menu();
         let previous = self.page.replace(page);
+        // An album or artist belongs to its list in the sidebar, a playlist to Playlists.
+        let section = match page {
+            Page::Album => Page::Albums,
+            Page::Artist => Page::Artists,
+            Page::Playlist(_) => Page::Playlists,
+            other => other,
+        };
+        for (item_page, item) in self.sidebar_items.borrow().iter() {
+            if *item_page == section {
+                item.add_css_class("active");
+            } else {
+                item.remove_css_class("active");
+            }
+        }
         if previous != page
             && self.track_search_open.replace(SearchVisibility::Automatic)
                 == SearchVisibility::Shortcut

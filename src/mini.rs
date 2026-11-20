@@ -59,6 +59,7 @@ pub fn open(player: &Rc<Player>) {
     layout.add_css_class("mini-layout");
     let cover = gtk::Overlay::new();
     cover.set_overflow(gtk::Overflow::Hidden);
+    cover.add_css_class("mini-cover");
     let placeholder = gtk::Image::from_icon_name("audio-x-generic-symbolic");
     placeholder.set_pixel_size(64);
     placeholder.add_css_class("mini-visual");
@@ -119,10 +120,14 @@ pub fn open(player: &Rc<Player>) {
     let artwork = gtk::Box::new(gtk::Orientation::Horizontal, 7);
     artwork.set_vexpand(true);
     artwork.set_homogeneous(true);
-    cover.set_hexpand(true);
-    cover.set_size_request(90, 125);
+    // A square frame keeps the cover's area the shape of the cover, so its rounded corners
+    // land on the image rather than on the empty space beside it.
+    cover.set_size_request(90, 90);
+    let cover_frame = gtk::AspectFrame::new(0.5, 0.5, 1.0, false);
+    cover_frame.set_child(Some(&cover));
+    cover_frame.set_hexpand(true);
     area.set_hexpand(true);
-    artwork.append(&cover);
+    artwork.append(&cover_frame);
     artwork.append(&area);
     visuals.append(&artwork);
     let lyric_panel = gtk::Stack::new();
@@ -182,7 +187,7 @@ pub fn open(player: &Rc<Player>) {
 
     let info = gtk::Box::new(gtk::Orientation::Vertical, 1);
     let title = gtk::Label::new(None);
-    title.set_xalign(0.0);
+    title.set_xalign(0.5);
     title.set_hexpand(true);
     title.set_ellipsize(gtk::pango::EllipsizeMode::End);
     title.add_css_class("playing-title");
@@ -199,7 +204,7 @@ pub fn open(player: &Rc<Player>) {
     info.append(&title);
     let artist = gtk::Label::new(None);
     artist.add_css_class("playing-artist");
-    artist.set_xalign(0.0);
+    artist.set_xalign(0.5);
     artist.set_ellipsize(gtk::pango::EllipsizeMode::End);
     for property in ["label", "tooltip-text", "visible"] {
         player
@@ -294,7 +299,7 @@ pub fn open(player: &Rc<Player>) {
             };
             let show_waveform = display.waveform && waveform_enabled;
             let show_lyrics = display.lyrics && lyrics_enabled;
-            cover.set_visible(display.cover);
+            cover_frame.set_visible(display.cover);
             area.set_visible(show_waveform);
             artwork.set_visible(display.cover || show_waveform);
             lyric_panel.set_visible(show_lyrics);
@@ -391,6 +396,7 @@ pub fn open(player: &Rc<Player>) {
     ] {
         let control = button(icon, label);
         if step == 0 {
+            control.add_css_class("play-button");
             for property in ["icon-name", "tooltip-text", "sensitive"] {
                 player
                     .toggle

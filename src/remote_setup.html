@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Ferritone · Browser shortcut</title>
+<style>
+  :root { --bg: #1e1d1b; --surface: #2a2926; --raised: #34332f; --text: #f2efe9; --muted: #a8a39a;
+          --accent: #ee853f; --accent-text: #1e1d1b; --line: #3d3b37; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, Cantarell, sans-serif;
+         max-width: 680px; margin: 0 auto; padding: 32px 20px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 6px; }
+  .lead { color: var(--muted); margin: 0 0 26px; }
+  ol { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+  li { counter-increment: step; position: relative; padding: 16px 16px 16px 60px; background: var(--surface);
+       border-radius: 12px; margin-bottom: 12px; }
+  li::before { content: counter(step); position: absolute; left: 16px; top: 15px; width: 30px; height: 30px;
+               border-radius: 50%; background: var(--accent); color: var(--accent-text); font-weight: 800;
+               display: grid; place-items: center; }
+  .copy { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  code { background: var(--raised); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px;
+         font: 14px ui-monospace, "DejaVu Sans Mono", monospace; }
+  .copy code { border-radius: 8px; padding: 8px 12px; font-size: 15px; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  button, a.button { background: var(--raised); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+         padding: 8px 14px; font: inherit; font-weight: 600; cursor: pointer; text-decoration: none; }
+  button.done { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+  a.ferritone { color: var(--accent); font-weight: 700; }
+  kbd { background: var(--raised); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px;
+        padding: 1px 6px; font: 14px ui-monospace, monospace; }
+  .note { color: var(--muted); font-size: .92rem; margin-top: 8px; }
+  .try { margin-top: 26px; text-align: center; }
+  .try a.button { background: var(--accent); color: var(--accent-text); border-color: var(--accent); padding: 12px 22px; }
+</style>
+</head>
+<body>
+<h1 id="heading"></h1>
+<p class="lead" id="lead"></p>
+<ol id="steps"></ol>
+<div class="try"><a class="button" id="try" href="/"></a></div>
+<script>
+"use strict";
+const home = location.origin + "/";
+const browser = new URLSearchParams(location.search).get("browser") || "other";
+const text = {
+  en: {
+    heading: "Open Ferritone by typing “ferritone”",
+    lead: "Set this up once. Afterwards, while Ferritone is open, typing ferritone in the address bar opens the player.",
+    copy: "Copy", copied: "Copied", tryIt: "Open the player",
+    firefox: [
+      "Right-click this link and choose <b>Bookmark Link…</b>: {link}",
+      "In <b>Keyword</b>, type <code>ferritone</code> and click <b>Save</b>. If the window has no Keyword field, open <b>Bookmarks → Manage Bookmarks</b>, select Ferritone, and fill it in there.",
+      "Done. Type <kbd>ferritone</kbd> in the address bar and press <kbd>Enter</kbd>.",
+    ],
+    chromium: [
+      "Copy this address, paste it in the address bar, and press <kbd>Enter</kbd> to open the search settings: {settings}",
+      "Under <b>Site search</b>, click <b>Add</b>.",
+      "Fill in the three fields and click <b>Add</b>:<br>Name: <code>Ferritone</code><br>Shortcut: <code>ferritone</code><br>URL: {template}",
+      "Done. Type <kbd>ferritone</kbd>, press <kbd>Tab</kbd>, then <kbd>Enter</kbd>.",
+    ],
+    other: [
+      "Bookmark this address, or drag this link to the bookmarks bar: {link}",
+      "If your browser lets bookmarks have a keyword, give it the keyword <code>ferritone</code>.",
+      "Open the bookmark, or type its keyword, whenever Ferritone is open.",
+    ],
+    note: "The address works only on this computer and only while Ferritone is open. Nothing goes through the internet.",
+  },
+  pt: {
+    heading: "Abra o Ferritone digitando “ferritone”",
+    lead: "Configure uma vez. Depois, com o Ferritone aberto, digitar ferritone na barra de endereço abre o player.",
+    copy: "Copiar", copied: "Copiado", tryIt: "Abrir o player",
+    firefox: [
+      "Clique com o botão direito neste link e escolha <b>Adicionar link aos favoritos…</b>: {link}",
+      "Em <b>Palavra-chave</b>, escreva <code>ferritone</code> e clique em <b>Salvar</b>. Se a janela não tiver o campo Palavra-chave, abra <b>Favoritos → Gerenciar favoritos</b>, selecione Ferritone e preencha lá.",
+      "Pronto. Digite <kbd>ferritone</kbd> na barra de endereço e aperte <kbd>Enter</kbd>.",
+    ],
+    chromium: [
+      "Copie este endereço, cole na barra de endereço e aperte <kbd>Enter</kbd> para abrir as configurações de pesquisa: {settings}",
+      "Em <b>Pesquisa no site</b>, clique em <b>Adicionar</b>.",
+      "Preencha os três campos e clique em <b>Adicionar</b>:<br>Nome: <code>Ferritone</code><br>Atalho: <code>ferritone</code><br>URL: {template}",
+      "Pronto. Digite <kbd>ferritone</kbd>, aperte <kbd>Tab</kbd> e depois <kbd>Enter</kbd>.",
+    ],
+    other: [
+      "Adicione este endereço aos favoritos ou arraste este link para a barra de favoritos: {link}",
+      "Se o seu navegador permitir palavra-chave em favoritos, use a palavra-chave <code>ferritone</code>.",
+      "Abra o favorito, ou digite a palavra-chave, sempre que o Ferritone estiver aberto.",
+    ],
+    note: "O endereço só funciona neste computador e só com o Ferritone aberto. Nada passa pela internet.",
+  },
+  es: {
+    heading: "Abre Ferritone escribiendo «ferritone»",
+    lead: "Configúralo una vez. Después, con Ferritone abierto, escribir ferritone en la barra de direcciones abre el reproductor.",
+    copy: "Copiar", copied: "Copiado", tryIt: "Abrir el reproductor",
+    firefox: [
+      "Haz clic derecho en este enlace y elige <b>Añadir enlace a marcadores…</b>: {link}",
+      "En <b>Palabra clave</b>, escribe <code>ferritone</code> y haz clic en <b>Guardar</b>. Si la ventana no tiene ese campo, abre <b>Marcadores → Administrar marcadores</b>, selecciona Ferritone y rellénalo allí.",
+      "Listo. Escribe <kbd>ferritone</kbd> en la barra de direcciones y pulsa <kbd>Intro</kbd>.",
+    ],
+    chromium: [
+      "Copia esta dirección, pégala en la barra de direcciones y pulsa <kbd>Intro</kbd> para abrir la configuración de búsqueda: {settings}",
+      "En <b>Búsqueda en sitios</b>, haz clic en <b>Añadir</b>.",
+      "Rellena los tres campos y haz clic en <b>Añadir</b>:<br>Nombre: <code>Ferritone</code><br>Combinación de teclas: <code>ferritone</code><br>URL: {template}",
+      "Listo. Escribe <kbd>ferritone</kbd>, pulsa <kbd>Tab</kbd> y luego <kbd>Intro</kbd>.",
+    ],
+    other: [
+      "Añade esta dirección a marcadores o arrastra este enlace a la barra de marcadores: {link}",
+      "Si tu navegador admite palabras clave en marcadores, usa la palabra clave <code>ferritone</code>.",
+      "Abre el marcador, o escribe la palabra clave, siempre que Ferritone esté abierto.",
+    ],
+    note: "La dirección solo funciona en este equipo y solo con Ferritone abierto. Nada pasa por internet.",
+  },
+  fr: {
+    heading: "Ouvrez Ferritone en tapant « ferritone »",
+    lead: "Configurez-le une fois. Ensuite, tant que Ferritone est ouvert, taper ferritone dans la barre d’adresse ouvre le lecteur.",
+    copy: "Copier", copied: "Copié", tryIt: "Ouvrir le lecteur",
+    firefox: [
+      "Faites un clic droit sur ce lien et choisissez <b>Marquer ce lien…</b> : {link}",
+      "Dans <b>Mot-clé</b>, tapez <code>ferritone</code> et cliquez sur <b>Enregistrer</b>. Si la fenêtre n’a pas de champ Mot-clé, ouvrez <b>Marque-pages → Gérer les marque-pages</b>, sélectionnez Ferritone et remplissez-le là.",
+      "C’est prêt. Tapez <kbd>ferritone</kbd> dans la barre d’adresse et appuyez sur <kbd>Entrée</kbd>.",
+    ],
+    chromium: [
+      "Copiez cette adresse, collez-la dans la barre d’adresse et appuyez sur <kbd>Entrée</kbd> pour ouvrir les paramètres de recherche : {settings}",
+      "Sous <b>Recherche sur site</b>, cliquez sur <b>Ajouter</b>.",
+      "Remplissez les trois champs et cliquez sur <b>Ajouter</b> :<br>Nom : <code>Ferritone</code><br>Raccourci : <code>ferritone</code><br>URL : {template}",
+      "C’est prêt. Tapez <kbd>ferritone</kbd>, appuyez sur <kbd>Tab</kbd>, puis sur <kbd>Entrée</kbd>.",
+    ],
+    other: [
+      "Ajoutez cette adresse aux marque-pages ou faites glisser ce lien vers la barre de marque-pages : {link}",
+      "Si votre navigateur permet un mot-clé pour les marque-pages, utilisez le mot-clé <code>ferritone</code>.",
+      "Ouvrez le marque-page, ou tapez le mot-clé, tant que Ferritone est ouvert.",
+    ],
+    note: "L’adresse ne fonctionne que sur cet ordinateur et seulement quand Ferritone est ouvert. Rien ne passe par internet.",
+  },
+};
+// A copyable value; the buttons get their handlers once the step is on the page.
+function copyBox(value, words) {
+  return `<div class="copy"><code>${value}</code><button data-copy="${value}">${words.copy}</button></div>`;
+}
+function render(language) {
+  const words = text[language] || text.en;
+  document.documentElement.lang = language;
+  document.getElementById("heading").textContent = words.heading;
+  document.getElementById("lead").textContent = words.lead;
+  document.getElementById("try").textContent = words.tryIt;
+  const link = `<a class="ferritone" href="${home}">Ferritone</a>`;
+  const settings = browser === "edge" ? "edge://settings/searchEngines"
+    : browser === "brave" ? "brave://settings/searchEngines"
+    : browser === "vivaldi" ? "vivaldi://settings/searchEngines" : "chrome://settings/searchEngines";
+  const steps = text[language] ? words[browser === "firefox" ? "firefox" : browser === "other" ? "other" : "chromium"]
+                               : text.en.other;
+  const list = document.getElementById("steps"); list.replaceChildren();
+  for (const step of steps) {
+    const li = document.createElement("li");
+    li.innerHTML = step
+      .replace("{link}", link + copyBox(home, words))
+      .replace("{settings}", copyBox(settings, words))
+      .replace("{template}", copyBox(home + "#%s", words));
+    list.append(li);
+  }
+  const note = document.createElement("p"); note.className = "note"; note.textContent = words.note;
+  list.after(note);
+  for (const button of document.querySelectorAll("button[data-copy]")) {
+    const value = button.dataset.copy;
+    button.onclick = () => navigator.clipboard.writeText(value).then(() => {
+      button.textContent = words.copied; button.classList.add("done");
+      setTimeout(() => { button.textContent = words.copy; button.classList.remove("done"); }, 1800);
+    });
+  }
+}
+fetch("/api/state").then(r => r.json()).then(state => render(state.language)).catch(() => render("en"));
+</script>
+</body>
+</html>

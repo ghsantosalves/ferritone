@@ -124,6 +124,7 @@ impl Player {
             .default_width(320)
             .build();
         let content = gtk::Box::new(gtk::Orientation::Vertical, 8);
+        content.add_css_class("page-actions");
         content.set_margin_top(18);
         content.set_margin_bottom(18);
         content.set_margin_start(18);

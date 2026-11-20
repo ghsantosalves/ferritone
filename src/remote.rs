@@ -24,6 +24,8 @@ use serde::{Deserialize, Serialize};
 /// Tried first so that a bookmarked link keeps working; any free port is used if it is taken.
 pub const PREFERRED_PORT: u16 = 47_123;
 const PAGE: &str = include_str!("remote.html");
+/// Step-by-step help for making `ferritone` open the page in a browser.
+const SETUP_PAGE: &str = include_str!("remote_setup.html");
 const MAX_HEADER: usize = 8 * 1024;
 const MAX_BODY: usize = 4 * 1024;
 
@@ -312,6 +314,7 @@ pub fn respond(
     let range = request.range;
     match (request.method, path) {
         ("GET", "/") => Response::new("200 OK", "text/html; charset=utf-8", PAGE),
+        ("GET", "/setup") => Response::new("200 OK", "text/html; charset=utf-8", SETUP_PAGE),
         ("GET", "/api/state") => match shared.snapshot.lock() {
             Ok(snapshot) => Response::json(&*snapshot),
             Err(_) => Response::text("500 Internal Server Error", "Unavailable"),

@@ -362,8 +362,10 @@ impl Player {
                             "Neste computador, abra {} em qualquer navegador enquanto o Ferritone estiver aberto.",
                         )
                         .replace("{}", address.trim_end_matches('/'))));
-                    open_here.set_halign(gtk::Align::Start);
-                    local.append(&open_here);
+                    let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+                    row.add_css_class("page-actions");
+                    row.append(&open_here);
+                    local.append(&row);
                 }
                 if !player.remote_on_network() {
                     details.append(&hint(player.text(
@@ -417,8 +419,10 @@ impl Player {
                     "Disconnect phones that have the current link",
                     "Desconecta os celulares que têm o link atual",
                 )));
-                reset.set_halign(gtk::Align::Start);
-                details.append(&reset);
+                let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+                row.add_css_class("page-actions");
+                row.append(&reset);
+                details.append(&row);
                 details.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
                 details.append(&local);
             }

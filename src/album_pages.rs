@@ -244,6 +244,7 @@ impl Player {
         summary.add_css_class("dim-label");
         details.append(&summary);
         let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        actions.add_css_class("page-actions");
         let tracks = album.tracks.clone();
         let play = button(self.text("Play", "Tocar"), self, move |player| {
             player.replace_queue(tracks.clone(), 0);

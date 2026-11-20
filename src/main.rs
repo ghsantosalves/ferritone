@@ -1,5 +1,6 @@
 mod album_pages;
 mod albums;
+mod browser_shortcut;
 mod equalizer;
 mod files;
 mod i18n;

@@ -583,6 +583,7 @@ impl Player {
         ));
         self.audio_preferences(&form);
         self.listenbrainz_preferences(&form);
+        self.browser_shortcut_preferences(&form);
         let scroll = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Never)
             .vexpand(true)

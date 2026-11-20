@@ -244,3 +244,10 @@ Playing music	Reproduciendo música	Lecture de musique
 Stops the screen from locking and the computer from sleeping while music plays	Evita que la pantalla se bloquee y que el equipo se suspenda mientras suena música	Empêche l’écran de se verrouiller et l’ordinateur de se mettre en veille pendant la lecture
 On this computer, open {} in any browser while Ferritone is open.	En este equipo, abre {} en cualquier navegador mientras Ferritone esté abierto.	Sur cet ordinateur, ouvrez {} dans n’importe quel navigateur tant que Ferritone est ouvert.
 When this is on, a phone on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser. Nothing goes through the internet.	Con esta opción activada, un móvil en la misma red Wi-Fi puede reproducir, pausar, cambiar de pista y elegir listas desde su navegador. Nada pasa por internet.	Lorsque cette option est activée, un téléphone sur le même réseau Wi-Fi peut lire, mettre en pause, changer de piste et choisir des listes depuis son navigateur. Rien ne passe par internet.
+Browser shortcut	Acceso directo en el navegador	Raccourci dans le navigateur
+Open the player by typing ferritone in your browser while Ferritone is open.	Abre el reproductor escribiendo ferritone en el navegador mientras Ferritone esté abierto.	Ouvrez le lecteur en tapant ferritone dans le navigateur tant que Ferritone est ouvert.
+Install browser shortcut	Instalar acceso directo en el navegador	Installer le raccourci dans le navigateur
+The player page is not available right now.	La página del reproductor no está disponible ahora.	La page du lecteur n’est pas disponible pour le moment.
+Choose the browser to set up. Ferritone opens it with the steps and copies the player's address.	Elige el navegador que quieres configurar. Ferritone lo abre con los pasos y copia la dirección del reproductor.	Choisissez le navigateur à configurer. Ferritone l’ouvre avec les étapes et copie l’adresse du lecteur.
+No web browser was found.	No se encontró ningún navegador.	Aucun navigateur n’a été trouvé.
+The browser could not be opened.	No se pudo abrir el navegador.	Impossible d’ouvrir le navigateur.

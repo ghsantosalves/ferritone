@@ -158,10 +158,12 @@ impl Player {
         ))]);
         form.append(&entry);
         let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        actions.add_css_class("page-actions");
         let status = gtk::Label::new(None);
         status.set_xalign(0.0);
         status.set_wrap(true);
         status.add_css_class("dim-label");
+        status.set_visible(false);
         let check = {
             let entry = entry.downgrade();
             let status = status.downgrade();
@@ -177,6 +179,7 @@ impl Player {
                         return;
                     }
                     status.set_text(player.text("Checking…", "Verificando…"));
+                    status.set_visible(true);
                     let weak = Rc::downgrade(player);
                     let status = status.downgrade();
                     glib::spawn_future_local(async move {
@@ -206,10 +209,18 @@ impl Player {
             )
         };
         actions.append(&check);
-        let link = gtk::LinkButton::with_label(
-            "https://listenbrainz.org/settings/",
+        let link = button(
             self.text("Get your token", "Obter seu token"),
+            self,
+            |player| {
+                gtk::UriLauncher::new("https://listenbrainz.org/settings/").launch(
+                    Some(&player.window),
+                    gio::Cancellable::NONE,
+                    |_| {},
+                );
+            },
         );
+        link.set_tooltip_text(Some("https://listenbrainz.org/settings/"));
         actions.append(&link);
         form.append(&actions);
         form.append(&status);

@@ -18,11 +18,15 @@
     padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
     max-width: 520px; margin: 0 auto;
   }
-  .output { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; color: var(--muted); font-size: .9rem; }
-  .segmented { display: flex; background: var(--surface); border-radius: 999px; padding: 3px; flex: 1; }
-  .segmented button { flex: 1; width: auto; height: 34px; border-radius: 999px; color: var(--muted);
-    font: inherit; font-weight: 600; display: flex; gap: 6px; }
-  .segmented button svg { width: 18px; height: 18px; }
+  .output { margin-bottom: 16px; }
+  .output > span { display: block; color: var(--muted); font-size: .8rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .04em; margin: 0 0 6px 4px; }
+  .segmented { display: flex; gap: 4px; background: var(--surface); border-radius: 999px; padding: 4px; }
+  .segmented button { flex: 1 1 0; min-width: 0; width: auto; height: 38px; padding: 0 10px; border-radius: 999px;
+    color: var(--muted); font: 600 15px/1 system-ui, -apple-system, "Segoe UI", Roboto, Cantarell, sans-serif; display: flex; align-items: center;
+    justify-content: center; gap: 7px; white-space: nowrap; overflow: hidden; }
+  .segmented button span { overflow: hidden; text-overflow: ellipsis; }
+  .segmented button svg { width: 18px; height: 18px; flex: none; }
   .segmented button.on { background: var(--accent); color: var(--accent-text); }
   .now { display: flex; flex-direction: column; align-items: center; gap: 14px; }
   .cover {

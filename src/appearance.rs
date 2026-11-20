@@ -60,10 +60,12 @@ fn unwrap_value(mut value: glib::Variant) -> glib::Variant {
     value
 }
 
-fn read(connection: &gio::DBusConnection, key: &str) -> Option<glib::Variant> {
-    let call = |method: &str| {
-        connection
-            .call_sync(
+/// Reads a setting without blocking the window: right after login the portal can take a few
+/// seconds to start, and a blocking call would freeze Ferritone while it does.
+async fn read(connection: &gio::DBusConnection, key: &str) -> Option<glib::Variant> {
+    for method in ["ReadOne", "Read"] {
+        let reply = connection
+            .call_future(
                 Some(PORTAL),
                 PATH,
                 SETTINGS,
@@ -71,12 +73,14 @@ fn read(connection: &gio::DBusConnection, key: &str) -> Option<glib::Variant> {
                 Some(&(NAMESPACE, key).to_variant()),
                 None,
                 gio::DBusCallFlags::NONE,
-                500,
-                gio::Cancellable::NONE,
+                5000,
             )
-            .ok()
-    };
-    call("ReadOne").or_else(|| call("Read")).map(unwrap_value)
+            .await;
+        if let Ok(reply) = reply {
+            return Some(unwrap_value(reply));
+        }
+    }
+    None
 }
 
 impl Player {
@@ -105,21 +109,33 @@ impl Player {
             .map(|settings| settings.string("accent-color").to_string())
     }
 
-    /// Reads the desktop appearance once and re-applies the theme whenever it changes.
+    /// Reads the desktop appearance in the background and re-applies the theme whenever it
+    /// changes. Until the portal answers, the theme comes from GSettings.
     pub(crate) fn watch_desktop_appearance(self: &Rc<Self>) {
-        let Ok(connection) = gio::bus_get_sync(gio::BusType::Session, gio::Cancellable::NONE)
+        let Some(connection) = self
+            .window
+            .application()
+            .and_then(|app| app.dbus_connection())
         else {
             return;
         };
-        if let Some(value) = read(&connection, "color-scheme").and_then(|value| value.get::<u32>())
-        {
-            self.portal_color_scheme.set(Some(value));
-        }
-        if let Some(rgb) =
-            read(&connection, "accent-color").and_then(|value| value.get::<(f64, f64, f64)>())
-        {
-            self.portal_accent.set(accent_name([rgb.0, rgb.1, rgb.2]));
-        }
+        let weak = Rc::downgrade(self);
+        let reader = connection.clone();
+        glib::spawn_future_local(async move {
+            let scheme = read(&reader, "color-scheme")
+                .await
+                .and_then(|value| value.get::<u32>());
+            let accent = read(&reader, "accent-color")
+                .await
+                .and_then(|value| value.get::<(f64, f64, f64)>())
+                .and_then(|rgb| accent_name([rgb.0, rgb.1, rgb.2]));
+            let Some(player) = weak.upgrade() else { return };
+            let scheme_changed = player.portal_color_scheme.replace(scheme) != scheme;
+            let accent_changed = player.portal_accent.replace(accent) != accent;
+            if scheme_changed || accent_changed {
+                player.apply_theme();
+            }
+        });
         let weak = Rc::downgrade(self);
         #[allow(deprecated)]
         connection.signal_subscribe(

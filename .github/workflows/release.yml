@@ -46,7 +46,7 @@ jobs:
           import os, xml.etree.ElementTree as ET
           version = os.environ["VERSION"]
           asset = os.environ["ASSET"]
-          root = ET.parse("assets/io.github.rustmusicplayer.Player.metainfo.xml").getroot()
+          root = ET.parse("assets/io.github.ghsantosalves.Ferritone.metainfo.xml").getroot()
           release = root.find(f"releases/release[@version='{version}']")
           summary = " ".join(p.text.strip() for p in release.iter("p")) if release is not None else ""
           print("## What's new\n")

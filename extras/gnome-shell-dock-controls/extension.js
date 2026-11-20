@@ -12,7 +12,7 @@ import St from 'gi://St';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-const APP_ID = 'io.github.rustmusicplayer.Player.desktop';
+const APP_ID = 'io.github.ghsantosalves.Ferritone.desktop';
 const BUS_NAME = 'org.mpris.MediaPlayer2.Ferritone';
 const OBJECT_PATH = '/org/mpris/MediaPlayer2';
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';

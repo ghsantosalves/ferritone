@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component type="desktop-application">
-  <id>io.github.rustmusicplayer.Player</id>
+  <id>io.github.ghsantosalves.Ferritone</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-only</project_license>
   <name>Ferritone</name>
@@ -15,12 +15,42 @@
     <p>The mini player can show album art, live audio visualizations, and optional lyrics. Ferritone also provides a ten-band equalizer, ReplayGain, and desktop media controls.</p>
     <p xml:lang="pt-BR">O miniplayer pode exibir a capa do álbum, visualizações de áudio e letras opcionais. O Ferritone também oferece equalizador de dez bandas, ReplayGain e controles de mídia integrados ao sistema.</p>
   </description>
-  <launchable type="desktop-id">io.github.rustmusicplayer.Player.desktop</launchable>
+  <replaces>
+    <id>io.github.rustmusicplayer.Player</id>
+  </replaces>
+  <launchable type="desktop-id">io.github.ghsantosalves.Ferritone.desktop</launchable>
   <provides>
     <binary>rust-music-player</binary>
   </provides>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Browse and search your music library</caption>
+      <caption xml:lang="pt-BR">Navegue e busque na sua biblioteca de músicas</caption>
+      <image type="source" width="1100" height="700">https://raw.githubusercontent.com/ghsantosalves/ferritone/v0.1.4/assets/screenshots/library.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Build playlists by dragging files and folders</caption>
+      <caption xml:lang="pt-BR">Crie playlists arrastando arquivos e pastas</caption>
+      <image type="source" width="1100" height="700">https://raw.githubusercontent.com/ghsantosalves/ferritone/v0.1.4/assets/screenshots/playlist.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Saved playlists and quick actions on the home page</caption>
+      <caption xml:lang="pt-BR">Playlists salvas e atalhos na página inicial</caption>
+      <image type="source" width="1100" height="700">https://raw.githubusercontent.com/ghsantosalves/ferritone/v0.1.4/assets/screenshots/home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The mini player with album art</caption>
+      <caption xml:lang="pt-BR">O miniplayer com a capa do álbum</caption>
+      <image type="source" width="385" height="365">https://raw.githubusercontent.com/ghsantosalves/ferritone/v0.1.4/assets/screenshots/mini.png</image>
+    </screenshot>
+  </screenshots>
   <url type="homepage">https://github.com/ghsantosalves/ferritone</url>
   <url type="bugtracker">https://github.com/ghsantosalves/ferritone/issues</url>
+  <url type="vcs-browser">https://github.com/ghsantosalves/ferritone</url>
+  <branding>
+    <color type="primary" scheme_preference="light">#f3c9a6</color>
+    <color type="primary" scheme_preference="dark">#5a3420</color>
+  </branding>
   <content_rating type="oars-1.1"/>
   <releases>
     <release version="0.1.3" date="2026-11-20">

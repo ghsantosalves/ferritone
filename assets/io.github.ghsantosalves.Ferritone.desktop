@@ -4,11 +4,11 @@ Name=Ferritone
 Comment=Play music and manage playlists
 Comment[pt_BR]=Reproduza músicas e gerencie listas de reprodução
 Exec=rust-music-player
-Icon=io.github.rustmusicplayer.Player
+Icon=io.github.ghsantosalves.Ferritone
 Terminal=false
 Categories=AudioVideo;Audio;Player;
 StartupNotify=true
-StartupWMClass=io.github.rustmusicplayer.Player
+StartupWMClass=io.github.ghsantosalves.Ferritone
 Actions=PlayPause;Previous;Next;
 
 [Desktop Action PlayPause]

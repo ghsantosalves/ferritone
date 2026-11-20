@@ -25,7 +25,7 @@ mkdir -p target/dist
 work=$(mktemp -d "$root/target/deb-build.XXXXXX")
 trap 'rm -rf -- "$work"' EXIT
 package="$work/debian/ferritone"
-appid=io.github.rustmusicplayer.Player
+appid=io.github.ghsantosalves.Ferritone
 doc="$package/usr/share/doc/ferritone"
 
 install -Dm755 target/release/rust-music-player "$package/usr/bin/rust-music-player"

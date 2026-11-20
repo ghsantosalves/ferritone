@@ -100,12 +100,29 @@ Build and install the release binary, desktop entry, and icon for the current us
 ```sh
 cargo build --release --locked
 install -Dm755 target/release/rust-music-player "$HOME/.local/bin/rust-music-player"
-install -Dm644 assets/io.github.rustmusicplayer.Player.desktop "$HOME/.local/share/applications/io.github.rustmusicplayer.Player.desktop"
-install -Dm644 assets/player-icon.svg "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.rustmusicplayer.Player.svg"
+install -Dm644 assets/io.github.ghsantosalves.Ferritone.desktop "$HOME/.local/share/applications/io.github.ghsantosalves.Ferritone.desktop"
+install -Dm644 assets/player-icon.svg "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.ghsantosalves.Ferritone.svg"
 install -Dm644 LICENSE "$HOME/.local/share/doc/ferritone/LICENSE"
 ```
 
 Open **Ferritone** from the application menu.
+
+Versions before 0.1.4 used the ID `io.github.rustmusicplayer.Player`. If you installed one of them this way, remove the old desktop entry and icon, then pin Ferritone to the dock again:
+
+```sh
+rm -f "$HOME/.local/share/applications/io.github.rustmusicplayer.Player.desktop" "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.rustmusicplayer.Player.svg"
+```
+
+## Build the Flatpak
+
+With `flatpak-builder` and the Flathub remote, build and install the Flatpak for the current user:
+
+```sh
+flatpak-builder --user --install-deps-from=flathub --install --force-clean build-flatpak packaging/flatpak/io.github.ghsantosalves.Ferritone.yml
+flatpak run io.github.ghsantosalves.Ferritone
+```
+
+The Flatpak reads music anywhere in your home folder but cannot change it, and it keeps its library separately in `~/.var/app/io.github.ghsantosalves.Ferritone/`. After changing dependencies, regenerate the offline crate sources with `python3 packaging/flatpak/cargo-sources.py > packaging/flatpak/cargo-sources.json`.
 
 ## Build the Debian package
 
@@ -117,7 +134,7 @@ packaging/build-deb.sh
 
 The package is written to `target/dist/`. It includes the AppStream metadata, desktop entry, icon, and the license notices of every bundled Rust crate.
 
-To publish a release, update the version in `Cargo.toml` and add a `<release>` entry to `assets/io.github.rustmusicplayer.Player.metainfo.xml`, then push a matching tag such as `v0.1.3`. The Release workflow builds the package on Debian 13 and opens a draft GitHub release with the `.deb`, `SHA256SUMS`, and notes taken from the metainfo entry. Review the draft and publish it.
+To publish a release, update the version in `Cargo.toml` and add a `<release>` entry to `assets/io.github.ghsantosalves.Ferritone.metainfo.xml`, then push a matching tag such as `v0.1.3`. The Release workflow builds the package on Debian 13 and opens a draft GitHub release with the `.deb`, `SHA256SUMS`, and notes taken from the metainfo entry. Review the draft and publish it.
 
 ## Data and playlists
 
@@ -138,6 +155,7 @@ M3U8 exports use relative paths for tracks below the export folder and absolute 
 | Track context menu and keyboard shortcuts | `src/track_menu.rs` |
 | Desktop media integration | `src/mpris.rs` |
 | ReplayGain and peak protection | `src/replay_gain.rs` |
+| Debian and Flatpak packaging | `packaging/` |
 
 ## License
 

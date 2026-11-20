@@ -1,0 +1,44 @@
+id: io.github.ghsantosalves.Ferritone
+runtime: org.gnome.Platform
+runtime-version: '51'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+command: rust-music-player
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  - --socket=pulseaudio
+  # Online lyrics lookup (off by default) uses LRCLIB.
+  - --share=network
+  # The library keeps paths to music anywhere in the home folder, including synced cloud folders.
+  - --filesystem=xdg-music:ro
+  - --filesystem=home:ro
+  - --own-name=org.mpris.MediaPlayer2.Ferritone
+build-options:
+  append-path: /usr/lib/sdk/rust-stable/bin
+modules:
+  - name: ferritone
+    buildsystem: simple
+    build-options:
+      env:
+        CARGO_HOME: /run/build/ferritone/cargo
+    build-commands:
+      - cargo --offline build --release --locked
+      - install -Dm755 target/release/rust-music-player -t /app/bin
+      - install -Dm644 assets/io.github.ghsantosalves.Ferritone.desktop -t /app/share/applications
+      - install -Dm644 assets/io.github.ghsantosalves.Ferritone.metainfo.xml -t /app/share/metainfo
+      - install -Dm644 assets/player-icon.svg /app/share/icons/hicolor/scalable/apps/io.github.ghsantosalves.Ferritone.svg
+    sources:
+      # Local builds use the working tree; the Flathub manifest pins a release tag instead.
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - .git
+          - .flatpak-builder
+          - build-flatpak
+          - Projeto do player de música em Rust.docx
+      - cargo-sources.json

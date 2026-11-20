@@ -44,7 +44,7 @@ const SORT_COLUMNS: [TrackSort; 4] = [
 ];
 type LibraryRefresh = Rc<dyn Fn(&str)>;
 type PlaylistIndicator = (usize, glib::WeakRef<gtk::Box>, glib::WeakRef<gtk::Image>);
-const APP_ID: &str = "io.github.rustmusicplayer.Player";
+const APP_ID: &str = "io.github.ghsantosalves.Ferritone";
 
 #[derive(Clone, Copy, PartialEq)]
 enum Page {

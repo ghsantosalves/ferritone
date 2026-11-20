@@ -171,9 +171,11 @@ struct Player {
     remote_sender: mpsc::Sender<remote::Command>,
     remote_receiver: mpsc::Receiver<remote::Command>,
     remote_ticks: Cell<u32>,
-    /// The cover last sent to the phone.
-    remote_cover: RefCell<Option<gdk::Texture>>,
+    /// What the library list for the phone was built from.
+    remote_library_signature: RefCell<Option<(usize, Option<PathBuf>, usize)>>,
     sleep: Cell<playback::SleepTimer>,
+    /// The session inhibition that keeps the computer awake while playing; 0 when none.
+    inhibit_cookie: Cell<u32>,
     /// Whether the current track's play has been counted.
     play_counted: Cell<bool>,
     /// When the current track started, for ListenBrainz.
@@ -445,8 +447,9 @@ fn build(app: &gtk::Application) {
         remote_sender,
         remote_receiver,
         remote_ticks: Cell::new(0),
-        remote_cover: RefCell::new(None),
+        remote_library_signature: RefCell::new(None),
         sleep: Cell::new(playback::SleepTimer::Off),
+        inhibit_cookie: Cell::new(0),
         play_counted: Cell::new(false),
         track_started_at: Cell::new(0),
         listens_sending: Cell::new(false),

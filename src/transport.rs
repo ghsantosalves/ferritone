@@ -365,6 +365,7 @@ impl Player {
         self.plan_handoff();
         self.poll_remote();
         self.poll_sleep();
+        self.update_inhibit();
         self.count_play();
         self.update_position();
         self.update_transport();

@@ -18,13 +18,19 @@
     padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
     max-width: 520px; margin: 0 auto;
   }
+  .output { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; color: var(--muted); font-size: .9rem; }
+  .segmented { display: flex; background: var(--surface); border-radius: 999px; padding: 3px; flex: 1; }
+  .segmented button { flex: 1; width: auto; height: 34px; border-radius: 999px; color: var(--muted);
+    font: inherit; font-weight: 600; display: flex; gap: 6px; }
+  .segmented button svg { width: 18px; height: 18px; }
+  .segmented button.on { background: var(--accent); color: var(--accent-text); }
   .now { display: flex; flex-direction: column; align-items: center; gap: 14px; }
   .cover {
-    width: min(72vw, 300px); aspect-ratio: 1; border-radius: 12px; background: var(--surface);
+    width: min(68vw, 290px); aspect-ratio: 1; border-radius: 12px; background: var(--surface);
     display: grid; place-items: center; overflow: hidden; box-shadow: 0 8px 28px rgb(0 0 0 / 35%);
   }
-  .cover img { width: 100%; height: 100%; object-fit: cover; display: none; }
-  .cover svg { width: 38%; fill: var(--muted); }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: none; grid-area: 1 / 1; }
+  .cover svg { width: 38%; fill: var(--muted); grid-area: 1 / 1; }
   .meta { text-align: center; width: 100%; min-height: 3.2em; }
   .title { font-size: 1.25rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .artist { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -40,16 +46,21 @@
   button:active { background: var(--raised); }
   button.play { width: 72px; height: 72px; background: var(--accent); color: var(--accent-text); }
   button.play svg { width: 34px; height: 34px; }
+  button.play:active { background: var(--accent); filter: brightness(.9); }
   button.toggle { color: var(--muted); }
   button.toggle.on { color: var(--accent); }
+  button:disabled { opacity: .35; }
   .badge { position: relative; }
   .badge span { position: absolute; right: 9px; bottom: 9px; font-size: 10px; font-weight: 800; }
   .volume { display: flex; align-items: center; gap: 10px; width: 100%; }
   .volume svg { width: 22px; height: 22px; fill: var(--muted); flex: none; }
-  .tabs { display: flex; gap: 8px; margin: 22px 0 8px; }
+  .tabs { display: flex; gap: 8px; margin: 22px 0 8px; overflow-x: auto; }
   .tabs button { width: auto; height: 38px; padding: 0 16px; background: var(--surface);
-    color: var(--muted); font: inherit; font-weight: 600; }
+    color: var(--muted); font: inherit; font-weight: 600; flex: none; }
   .tabs button.on { background: var(--raised); color: var(--text); }
+  .search { width: 100%; height: 42px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface);
+    color: var(--text); font: inherit; padding: 0 14px; margin-bottom: 6px; display: none; }
+  .search::placeholder { color: var(--muted); }
   ul { list-style: none; margin: 0; padding: 0; }
   li { display: flex; align-items: center; gap: 12px; padding: 11px 10px; border-radius: 8px; cursor: pointer; }
   li:active { background: var(--raised); }
@@ -59,12 +70,21 @@
   li .t div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   li .t .s { color: var(--muted); font-size: .85rem; }
   li.current .t div:first-child, li.current .n { color: var(--accent); font-weight: 700; }
-  .empty, .offline { color: var(--muted); text-align: center; padding: 18px; }
-  .offline { display: none; background: var(--surface); border-radius: 8px; margin-bottom: 12px; }
+  li.more { justify-content: center; color: var(--accent); font-weight: 600; }
+  .empty, .notice { color: var(--muted); text-align: center; padding: 18px; }
+  .notice { display: none; background: var(--surface); border-radius: 8px; margin-bottom: 12px; padding: 12px; }
+  audio { display: none; }
 </style>
 </head>
 <body>
-<div class="offline" id="offline"></div>
+<div class="notice" id="notice"></div>
+<div class="output">
+  <span id="play-on"></span>
+  <div class="segmented">
+    <button id="out-pc"><svg viewBox="0 0 24 24"><path d="M4 5h16v10H4zm-2 0v10a2 2 0 0 0 2 2h6v2H7v2h10v-2h-3v-2h6a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2z"/></svg><span id="out-pc-label"></span></button>
+    <button id="out-phone"><svg viewBox="0 0 24 24"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm0 3v13h10V5H7zm5 14.2a1 1 0 1 0 0 1.6 1 1 0 0 0 0-1.6z"/></svg><span id="out-phone-label"></span></button>
+  </div>
+</div>
 <section class="now">
   <div class="cover">
     <img id="cover" alt="">
@@ -90,40 +110,146 @@
 </section>
 <div class="tabs">
   <button id="tab-queue" class="on"></button>
+  <button id="tab-library"></button>
   <button id="tab-playlists"></button>
 </div>
+<input class="search" id="search" type="search" autocomplete="off">
 <ul id="list"></ul>
+<audio id="audio" preload="auto"></audio>
 <script>
 "use strict";
 const token = new URLSearchParams(location.search).get("t") || "";
 const words = {
-  en: { queue: "Queue", playlists: "Playlists", nothing: "Nothing playing", emptyQueue: "The queue is empty.",
-        emptyPlaylists: "No saved playlists.", tracks: n => n === 1 ? "1 track" : n + " tracks",
-        offline: "Can't reach Ferritone. Check that it is open and on the same Wi-Fi network." },
-  pt: { queue: "Fila", playlists: "Playlists", nothing: "Nenhuma faixa", emptyQueue: "A fila está vazia.",
-        emptyPlaylists: "Nenhuma playlist salva.", tracks: n => n === 1 ? "1 faixa" : n + " faixas",
-        offline: "Não foi possível falar com o Ferritone. Confira se ele está aberto e na mesma rede Wi-Fi." },
-  es: { queue: "Cola", playlists: "Listas", nothing: "Nada en reproducción", emptyQueue: "La cola está vacía.",
-        emptyPlaylists: "No hay listas guardadas.", tracks: n => n === 1 ? "1 pista" : n + " pistas",
-        offline: "No se puede conectar con Ferritone. Comprueba que esté abierto y en la misma red Wi-Fi." },
-  fr: { queue: "File d’attente", playlists: "Listes", nothing: "Aucune lecture", emptyQueue: "La file est vide.",
-        emptyPlaylists: "Aucune liste enregistrée.", tracks: n => n === 1 ? "1 piste" : n + " pistes",
-        offline: "Impossible de joindre Ferritone. Vérifiez qu’il est ouvert et sur le même réseau Wi-Fi." },
+  en: { queue: "Queue", library: "Library", playlists: "Playlists", nothing: "Nothing playing",
+        emptyQueue: "The queue is empty.", emptyPlaylists: "No saved playlists.", emptyLibrary: "The library is empty.",
+        noMatches: "No matching tracks.", search: "Search tracks, artists and albums", more: "Show more",
+        tracks: n => n === 1 ? "1 track" : n + " tracks", playOn: "Play on", pc: "Computer", phone: "Phone",
+        offline: "Can't reach Ferritone. Check that it is open and on the same Wi-Fi network.",
+        unsupported: "This browser can't play this file's format, so it was skipped.",
+        blocked: "Tap play to start the sound on this phone." },
+  pt: { queue: "Fila", library: "Biblioteca", playlists: "Playlists", nothing: "Nenhuma faixa",
+        emptyQueue: "A fila está vazia.", emptyPlaylists: "Nenhuma playlist salva.", emptyLibrary: "A biblioteca está vazia.",
+        noMatches: "Nenhuma faixa encontrada.", search: "Buscar faixas, artistas e álbuns", more: "Mostrar mais",
+        tracks: n => n === 1 ? "1 faixa" : n + " faixas", playOn: "Tocar no", pc: "Computador", phone: "Celular",
+        offline: "Não foi possível falar com o Ferritone. Confira se ele está aberto e na mesma rede Wi-Fi.",
+        unsupported: "Este navegador não toca o formato deste arquivo, então ele foi pulado.",
+        blocked: "Toque no play para começar o som neste celular." },
+  es: { queue: "Cola", library: "Biblioteca", playlists: "Listas", nothing: "Nada en reproducción",
+        emptyQueue: "La cola está vacía.", emptyPlaylists: "No hay listas guardadas.", emptyLibrary: "La biblioteca está vacía.",
+        noMatches: "No hay pistas que coincidan.", search: "Buscar pistas, artistas y álbumes", more: "Mostrar más",
+        tracks: n => n === 1 ? "1 pista" : n + " pistas", playOn: "Reproducir en", pc: "Ordenador", phone: "Móvil",
+        offline: "No se puede conectar con Ferritone. Comprueba que esté abierto y en la misma red Wi-Fi.",
+        unsupported: "Este navegador no reproduce el formato de este archivo, así que se ha saltado.",
+        blocked: "Toca reproducir para empezar el sonido en este móvil." },
+  fr: { queue: "File d’attente", library: "Bibliothèque", playlists: "Listes", nothing: "Aucune lecture",
+        emptyQueue: "La file est vide.", emptyPlaylists: "Aucune liste enregistrée.", emptyLibrary: "La bibliothèque est vide.",
+        noMatches: "Aucune piste correspondante.", search: "Rechercher pistes, artistes et albums", more: "Afficher plus",
+        tracks: n => n === 1 ? "1 piste" : n + " pistes", playOn: "Lire sur", pc: "Ordinateur", phone: "Téléphone",
+        offline: "Impossible de joindre Ferritone. Vérifiez qu’il est ouvert et sur le même réseau Wi-Fi.",
+        unsupported: "Ce navigateur ne lit pas le format de ce fichier ; il a été ignoré.",
+        blocked: "Touchez lecture pour démarrer le son sur ce téléphone." },
 };
+const PAGE_SIZE = 200;
 const $ = id => document.getElementById(id);
-let state = null, tab = "queue", seeking = false, changingVolume = false, coverVersion = -1, listKey = "";
+const audio = $("audio");
+let state = null, tab = "queue", seeking = false, changingVolume = false, listKey = "", coverKey = "";
+let library = { version: -1, tracks: [] }, libraryLoading = false, shown = PAGE_SIZE, query = "";
+let output = "pc";
+try { output = localStorage.getItem("ferritone-output") === "phone" ? "phone" : "pc"; } catch (e) {}
+// What the phone itself is playing: which list, which entry.
+const local = { src: "queue", index: -1 };
 let w = words.en;
 
 function api(path) { return path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(token); }
 function send(action, value) {
   const body = value === undefined ? { action } : { action, value };
-  fetch(api("/api/command"), { method: "POST", body: JSON.stringify(body) })
+  return fetch(api("/api/command"), { method: "POST", body: JSON.stringify(body) })
     .then(() => setTimeout(refresh, 150)).catch(() => {});
 }
 function time(ms) {
-  const s = Math.floor(ms / 1000);
+  const s = Math.floor((ms || 0) / 1000);
   const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, r = String(s % 60).padStart(2, "0");
   return h ? h + ":" + String(m).padStart(2, "0") + ":" + r : m + ":" + r;
+}
+function fold(text) { return (text || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase(); }
+function notice(text) { $("notice").textContent = text || ""; $("notice").style.display = text ? "block" : "none"; }
+function localList() { return local.src === "library" ? library.tracks : (state ? state.queue : []); }
+function localEntry() { return localList()[local.index]; }
+
+// --- Playing on the phone ---------------------------------------------------------------
+function playLocal(src, index, positionMs) {
+  const list = src === "library" ? library.tracks : state.queue;
+  if (index < 0 || index >= list.length) { audio.pause(); local.index = -1; render(); return; }
+  local.src = src; local.index = index;
+  audio.src = api("/api/audio?src=" + src + "&i=" + index);
+  const start = () => {
+    if (positionMs) audio.currentTime = positionMs / 1000;
+    audio.play().then(() => notice("")).catch(() => notice(w.blocked));
+  };
+  audio.addEventListener("loadedmetadata", start, { once: true });
+  audio.load();
+  updateMediaSession();
+  render();
+}
+function stepLocal(offset, automatic) {
+  const list = localList();
+  if (automatic && state && state.repeat === "track") { playLocal(local.src, local.index, 0); return; }
+  let next = local.index + offset;
+  if (next >= list.length) next = state && state.repeat === "queue" ? 0 : -1;
+  if (next < 0 && offset < 0) next = 0;
+  if (offset < 0 && audio.currentTime > 3) next = local.index;
+  playLocal(local.src, next, 0);
+}
+audio.addEventListener("ended", () => stepLocal(1, true));
+audio.addEventListener("error", () => { if (audio.src && local.index >= 0) { notice(w.unsupported); stepLocal(1, true); } });
+audio.addEventListener("timeupdate", () => { if (output === "phone") renderTransport(); });
+audio.addEventListener("play", () => renderTransport());
+audio.addEventListener("pause", () => renderTransport());
+
+function updateMediaSession() {
+  if (!("mediaSession" in navigator)) return;
+  const entry = output === "phone" ? localEntry() : null;
+  if (!entry) { navigator.mediaSession.metadata = null; return; }
+  navigator.mediaSession.metadata = new MediaMetadata({
+    title: entry.title, artist: entry.artist || "", album: entry.album || "",
+    artwork: [{ src: new URL(coverUrl(), location.href).href }],
+  });
+}
+if ("mediaSession" in navigator) {
+  const handlers = {
+    play: () => audio.play(), pause: () => audio.pause(),
+    nexttrack: () => stepLocal(1, false), previoustrack: () => stepLocal(-1, false),
+    seekto: details => { audio.currentTime = details.seekTime; },
+  };
+  for (const [action, handler] of Object.entries(handlers)) {
+    try { navigator.mediaSession.setActionHandler(action, handler); } catch (e) {}
+  }
+}
+
+function setOutput(next) {
+  if (next === output || !state) return;
+  if (next === "phone") {
+    output = "phone";
+    const index = state.current ?? 0;
+    send("pause");
+    playLocal("queue", index, state.playing || state.position_ms ? state.position_ms : 0);
+  } else {
+    output = "pc";
+    const position = Math.round(audio.currentTime * 1000);
+    audio.pause();
+    if (local.index >= 0) {
+      send(local.src === "library" ? "play_library_at" : "play_queue_at", { index: local.index, position_ms: position });
+    }
+    updateMediaSession();
+  }
+  try { localStorage.setItem("ferritone-output", output); } catch (e) {}
+  render();
+}
+
+// --- Drawing --------------------------------------------------------------------------
+function coverUrl() {
+  if (output === "phone") return api("/api/cover?src=" + local.src + "&i=" + local.index);
+  return api("/api/cover?src=queue&i=" + (state.current ?? -1));
 }
 function row(number, title, sub, current, onclick) {
   const li = document.createElement("li");
@@ -135,72 +261,171 @@ function row(number, title, sub, current, onclick) {
   t.append(a, b); li.append(n, t); li.onclick = onclick;
   return li;
 }
+function message(list, text) {
+  const li = document.createElement("li"); li.className = "empty"; li.textContent = text; list.append(li);
+}
+function currentIn(src) {
+  if (output === "phone") return local.src === src ? local.index : -1;
+  return src === "queue" ? state.current : -1;
+}
+function choose(src, index) {
+  if (output === "phone") playLocal(src, index, 0);
+  else send(src === "library" ? "play_library" : "play_queue", index);
+}
 function renderList() {
-  const key = JSON.stringify([tab, state.current, tab === "queue" ? state.queue : state.playlists]);
+  const items = tab === "queue" ? state.queue : tab === "playlists" ? state.playlists : library.tracks;
+  const key = JSON.stringify([tab, output, local, state.current, query, shown, tab === "library" ? library.version : items]);
   if (key === listKey) return;
   listKey = key;
   const list = $("list"); list.replaceChildren();
-  const items = tab === "queue" ? state.queue : state.playlists;
-  if (!items.length) {
-    const li = document.createElement("li"); li.className = "empty";
-    li.textContent = tab === "queue" ? w.emptyQueue : w.emptyPlaylists;
-    list.append(li); return;
+  if (tab === "playlists") {
+    if (!items.length) return message(list, w.emptyPlaylists);
+    items.forEach((item, i) => list.append(row(i + 1, item.name, w.tracks(item.tracks), false, () => {
+      if (output === "phone") {
+        // The computer swaps its queue for the playlist without playing it; the phone plays it.
+        send("play_playlist", i).then(() => send("pause")).then(() => setTimeout(() =>
+          fetchState().then(() => { if (state.queue.length) playLocal("queue", 0, 0); }), 300));
+      } else send("play_playlist", i);
+    })));
+    return;
   }
-  items.forEach((item, i) => list.append(tab === "queue"
-    ? row(i + 1, item.title, item.artist, i === state.current, () => send("play_queue", i))
-    : row(i + 1, item.name, w.tracks(item.tracks), false, () => send("play_playlist", i))));
+  if (tab === "queue") {
+    if (!items.length) return message(list, w.emptyQueue);
+    const current = currentIn("queue");
+    items.forEach((item, i) => list.append(row(i + 1, item.title, item.artist, i === current, () => choose("queue", i))));
+    return;
+  }
+  if (libraryLoading && !items.length) return;
+  if (!items.length) return message(list, w.emptyLibrary);
+  const words_ = fold(query).split(/\s+/).filter(Boolean);
+  const current = currentIn("library");
+  let matches = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (words_.length) {
+      const haystack = fold(item.title + " " + item.artist + " " + item.album);
+      if (!words_.every(word => haystack.includes(word))) continue;
+    }
+    matches++;
+    if (matches > shown) break;
+    list.append(row(i + 1, item.title, [item.artist, item.album].filter(Boolean).join(" · "), i === current, () => choose("library", i)));
+  }
+  if (!matches) message(list, w.noMatches);
+  else if (matches > shown) {
+    const li = document.createElement("li"); li.className = "more"; li.textContent = w.more;
+    li.onclick = () => { shown += PAGE_SIZE; renderList(); };
+    list.append(li);
+  }
+}
+function renderTransport() {
+  if (!state) return;
+  const phone = output === "phone";
+  const playing = phone ? !audio.paused : state.playing;
+  $("toggle-icon").setAttribute("d", playing ? "M6 19h4V5H6v14zm8-14v14h4V5h-4z" : "M8 5v14l11-7z");
+  const position = phone ? audio.currentTime * 1000 : state.position_ms;
+  const duration = phone ? (isFinite(audio.duration) ? audio.duration * 1000 : 0) : state.duration_ms;
+  if (!seeking) {
+    $("seek").max = Math.max(1, Math.round(duration));
+    $("seek").value = Math.round(position);
+    $("position").textContent = time(position);
+  }
+  $("duration").textContent = time(duration);
+  if (!changingVolume) $("volume").value = Math.round((phone ? audio.volume : state.volume) * 100);
 }
 function render() {
+  if (!state) return;
   w = words[state.language] || words.en;
   document.documentElement.lang = state.language || "en";
-  $("tab-queue").textContent = w.queue; $("tab-playlists").textContent = w.playlists;
-  $("tab-queue").classList.toggle("on", tab === "queue");
-  $("tab-playlists").classList.toggle("on", tab === "playlists");
-  $("title").textContent = state.title || w.nothing;
-  $("artist").textContent = [state.artist, state.album].filter(Boolean).join(" · ");
-  document.title = state.title ? state.title + " · Ferritone" : "Ferritone";
-  $("toggle-icon").setAttribute("d", state.playing ? "M6 19h4V5H6v14zm8-14v14h4V5h-4z" : "M8 5v14l11-7z");
-  if (!seeking) {
-    $("seek").max = Math.max(1, state.duration_ms);
-    $("seek").value = state.position_ms;
-    $("position").textContent = time(state.position_ms);
+  $("play-on").textContent = w.playOn;
+  $("out-pc-label").textContent = w.pc; $("out-phone-label").textContent = w.phone;
+  $("out-pc").classList.toggle("on", output === "pc");
+  $("out-phone").classList.toggle("on", output === "phone");
+  for (const name of ["queue", "library", "playlists"]) {
+    $("tab-" + name).textContent = w[name];
+    $("tab-" + name).classList.toggle("on", tab === name);
   }
-  $("duration").textContent = time(state.duration_ms);
-  if (!changingVolume) $("volume").value = Math.round(state.volume * 100);
+  $("search").placeholder = w.search;
+  $("search").style.display = tab === "library" ? "block" : "none";
+  const phone = output === "phone";
+  const entry = phone ? localEntry() : null;
+  const title = phone ? entry && entry.title : state.title;
+  const artist = phone ? entry && [entry.artist, entry.album].filter(Boolean).join(" · ")
+                       : [state.artist, state.album].filter(Boolean).join(" · ");
+  $("title").textContent = title || w.nothing;
+  $("artist").textContent = artist || "";
+  document.title = title ? title + " · Ferritone" : "Ferritone";
+  // Shuffle and repeat belong to the computer's queue; the phone follows repeat.
+  $("shuffle").disabled = phone;
   $("shuffle").classList.toggle("on", state.shuffle);
   $("repeat").classList.toggle("on", state.repeat !== "off");
   $("repeat-one").textContent = state.repeat === "track" ? "1" : "";
-  if (state.cover !== coverVersion) {
-    coverVersion = state.cover;
+  const key = phone ? local.src + local.index : "q" + state.current + state.title;
+  if (key !== coverKey) {
+    coverKey = key;
     const img = $("cover");
     img.onload = () => { img.style.display = "block"; $("note").style.display = "none"; };
     img.onerror = () => { img.style.display = "none"; $("note").style.display = "block"; };
-    img.src = api("/api/cover?v=" + coverVersion);
+    img.src = coverUrl();
   }
+  renderTransport();
   renderList();
 }
-function refresh() {
-  fetch(api("/api/state"))
-    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(s => { state = s; $("offline").style.display = "none"; render(); })
-    .catch(() => { $("offline").textContent = w.offline; $("offline").style.display = "block"; });
+function loadLibrary() {
+  if (libraryLoading || !state || library.version === state.library_version) return;
+  libraryLoading = true;
+  fetch(api("/api/library"))
+    .then(r => r.json())
+    .then(data => { library = data; })
+    .catch(() => {})
+    .finally(() => { libraryLoading = false; listKey = ""; render(); });
 }
-$("toggle").onclick = () => send("toggle");
-$("next").onclick = () => send("next");
-$("previous").onclick = () => send("previous");
+function fetchState() {
+  return fetch(api("/api/state"))
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(s => { state = s; if ($("notice").textContent === w.offline) notice(""); });
+}
+function refresh() {
+  fetchState()
+    .then(() => { if (tab === "library" || local.src === "library") loadLibrary(); render(); })
+    .catch(() => notice(w.offline));
+}
+
+// --- Controls -------------------------------------------------------------------------
+$("toggle").onclick = () => {
+  if (output === "pc") return send("toggle");
+  if (local.index < 0) return playLocal("queue", state ? state.current ?? 0 : 0, 0);
+  audio.paused ? audio.play().catch(() => notice(w.blocked)) : audio.pause();
+};
+$("next").onclick = () => output === "pc" ? send("next") : stepLocal(1, false);
+$("previous").onclick = () => output === "pc" ? send("previous") : stepLocal(-1, false);
 $("shuffle").onclick = () => send("shuffle");
 $("repeat").onclick = () => send("repeat");
 $("seek").oninput = () => { seeking = true; $("position").textContent = time(+$("seek").value); };
-$("seek").onchange = () => { send("seek", +$("seek").value); seeking = false; };
+$("seek").onchange = () => {
+  if (output === "pc") send("seek", +$("seek").value); else audio.currentTime = +$("seek").value / 1000;
+  seeking = false;
+};
 let volumeTimer = null;
 $("volume").oninput = () => {
   changingVolume = true;
+  if (output === "phone") { audio.volume = +$("volume").value / 100; return; }
   // Send at most a few updates per second while the finger moves.
   if (!volumeTimer) volumeTimer = setTimeout(() => { volumeTimer = null; send("volume", +$("volume").value / 100); }, 120);
 };
-$("volume").onchange = () => { changingVolume = false; send("volume", +$("volume").value / 100); };
-$("tab-queue").onclick = () => { tab = "queue"; if (state) render(); };
-$("tab-playlists").onclick = () => { tab = "playlists"; if (state) render(); };
+$("volume").onchange = () => {
+  changingVolume = false;
+  if (output === "pc") send("volume", +$("volume").value / 100);
+};
+$("out-pc").onclick = () => setOutput("pc");
+$("out-phone").onclick = () => setOutput("phone");
+for (const name of ["queue", "library", "playlists"]) {
+  $("tab-" + name).onclick = () => {
+    tab = name; listKey = "";
+    if (name === "library") loadLibrary();
+    render();
+  };
+}
+$("search").oninput = () => { query = $("search").value; shown = PAGE_SIZE; renderList(); };
 refresh();
 setInterval(refresh, 1000);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });

@@ -654,6 +654,24 @@ impl Player {
         description.set_xalign(0.0);
         description.set_wrap(true);
         form.append(&description);
+        let awake = gtk::CheckButton::with_label(self.text(
+            "Keep the computer awake while playing",
+            "Manter o computador ativo enquanto toca",
+        ));
+        awake.set_active(!self.state.borrow().allow_sleep);
+        awake.set_tooltip_text(Some(self.text(
+            "Stops the screen from locking and the computer from sleeping while music plays",
+            "Impede que a tela bloqueie e que o computador suspenda enquanto a música toca",
+        )));
+        let weak = Rc::downgrade(self);
+        awake.connect_toggled(move |awake| {
+            if let Some(player) = weak.upgrade() {
+                player.state.borrow_mut().allow_sleep = !awake.is_active();
+                player.save();
+                player.update_inhibit();
+            }
+        });
+        form.append(&awake);
     }
 
     pub(crate) fn save_replay_gain(&self) {

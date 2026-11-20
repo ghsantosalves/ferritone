@@ -237,3 +237,8 @@ ListenBrainz user token	Token de usuario de ListenBrainz	Jeton utilisateur Liste
 Submit listens to ListenBrainz	Enviar escuchas a ListenBrainz	Envoyer les écoutes à ListenBrainz
 This token is not valid.	Este token no es válido.	Ce jeton n’est pas valide.
 User token	Token de usuario	Jeton utilisateur
+Keep the computer awake while playing	Mantener el equipo activo durante la reproducción	Garder l’ordinateur actif pendant la lecture
+Open on this computer	Abrir en este equipo	Ouvrir sur cet ordinateur
+Open the remote page in this computer's browser	Abre la página del control en el navegador de este equipo	Ouvre la page de la télécommande dans le navigateur de cet ordinateur
+Playing music	Reproduciendo música	Lecture de musique
+Stops the screen from locking and the computer from sleeping while music plays	Evita que la pantalla se bloquee y que el equipo se suspenda mientras suena música	Empêche l’écran de se verrouiller et l’ordinateur de se mettre en veille pendant la lecture

@@ -5,8 +5,10 @@
 //! The server runs only while the user has turned remote control on.
 
 use std::{
-    io::{self, BufRead, BufReader, Read, Write},
+    fs,
+    io::{self, BufRead, BufReader, Read, Seek, SeekFrom, Write},
     net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream, UdpSocket},
+    path::{Path, PathBuf},
     sync::{
         Arc, Mutex,
         atomic::{AtomicBool, Ordering},
@@ -37,14 +39,41 @@ pub enum Command {
     Volume(f64),
     Shuffle,
     Repeat,
+    Pause,
     PlayQueue(usize),
     PlayPlaylist(usize),
+    /// A track by its index in the library list.
+    PlayLibrary(usize),
+    /// Continues on the computer where the phone stopped.
+    PlayQueueAt(Position),
+    PlayLibraryAt(Position),
+}
+
+#[derive(Debug, PartialEq, Deserialize)]
+pub struct Position {
+    pub index: usize,
+    pub position_ms: u64,
 }
 
 #[derive(Clone, Default, PartialEq, Serialize)]
 pub struct Entry {
     pub title: String,
     pub artist: String,
+}
+
+#[derive(Clone, Default, PartialEq, Serialize)]
+pub struct LibraryEntry {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+}
+
+/// The whole library, sent to the phone only when it asks, since it can be large.
+#[derive(Default)]
+pub struct LibraryList {
+    pub version: u64,
+    pub entries: Vec<LibraryEntry>,
+    pub paths: Vec<PathBuf>,
 }
 
 #[derive(Clone, Default, PartialEq, Serialize)]
@@ -67,8 +96,8 @@ pub struct Snapshot {
     pub shuffle: bool,
     pub repeat: String,
     pub current: Option<usize>,
-    /// Changes whenever the cover changes, so the page knows to reload it.
-    pub cover: u64,
+    /// Changes whenever the library list changes, so the page knows to fetch it again.
+    pub library_version: u64,
     pub queue: Vec<Entry>,
     pub playlists: Vec<PlaylistEntry>,
 }
@@ -77,13 +106,26 @@ pub struct Snapshot {
 #[derive(Default)]
 pub struct Shared {
     pub snapshot: Mutex<Snapshot>,
-    pub cover: Mutex<Option<Vec<u8>>>,
+    /// The files behind `Snapshot::queue`, for streaming to the phone.
+    pub queue_paths: Mutex<Vec<PathBuf>>,
+    pub library: Mutex<LibraryList>,
+}
+
+pub enum Body {
+    Bytes(Vec<u8>),
+    /// Part of a file, streamed rather than read into memory.
+    File {
+        path: PathBuf,
+        start: u64,
+        end: u64,
+        total: u64,
+    },
 }
 
 pub struct Response {
     pub status: &'static str,
     pub content_type: &'static str,
-    pub body: Vec<u8>,
+    pub body: Body,
 }
 
 impl Response {
@@ -91,8 +133,16 @@ impl Response {
         Self {
             status,
             content_type,
-            body: body.into(),
+            body: Body::Bytes(body.into()),
         }
+    }
+
+    fn json(value: &impl Serialize) -> Self {
+        Self::new(
+            "200 OK",
+            "application/json",
+            serde_json::to_vec(value).unwrap_or_default(),
+        )
     }
 
     fn text(status: &'static str, body: &str) -> Self {
@@ -100,20 +150,112 @@ impl Response {
     }
 }
 
-/// Answers one request. Kept free of I/O so it can be tested.
+fn param<'a>(query: &'a str, name: &str) -> Option<&'a str> {
+    query.split('&').find_map(|pair| {
+        let (key, value) = pair.split_once('=')?;
+        (key == name).then_some(value)
+    })
+}
+
+/// The file a request points at: a queue or library entry by index, never a path from the phone.
+fn requested_file(query: &str, shared: &Shared) -> Option<PathBuf> {
+    let index: usize = param(query, "i")?.parse().ok()?;
+    match param(query, "src")? {
+        "queue" => shared.queue_paths.lock().ok()?.get(index).cloned(),
+        "library" => shared.library.lock().ok()?.paths.get(index).cloned(),
+        _ => None,
+    }
+}
+
+fn audio_type(path: &Path) -> &'static str {
+    match path
+        .extension()
+        .and_then(|extension| extension.to_str())
+        .map(str::to_ascii_lowercase)
+        .as_deref()
+    {
+        Some("mp3") => "audio/mpeg",
+        Some("flac") => "audio/flac",
+        Some("ogg" | "oga" | "opus") => "audio/ogg",
+        Some("wav") => "audio/wav",
+        Some("aac") => "audio/aac",
+        Some("m4a" | "alac") => "audio/mp4",
+        Some("aiff") => "audio/aiff",
+        _ => "application/octet-stream",
+    }
+}
+
+/// Parses a single `bytes=` range against a file of `total` bytes into inclusive offsets.
+pub fn parse_range(header: &str, total: u64) -> Option<(u64, u64)> {
+    let spec = header.trim().strip_prefix("bytes=")?;
+    if spec.contains(',') || total == 0 {
+        return None;
+    }
+    let (start, end) = spec.split_once('-')?;
+    let (start, end) = if start.is_empty() {
+        let suffix: u64 = end.parse().ok()?;
+        (total.saturating_sub(suffix), total - 1)
+    } else {
+        let start: u64 = start.parse().ok()?;
+        let end = if end.is_empty() {
+            total - 1
+        } else {
+            end.parse::<u64>().ok()?.min(total - 1)
+        };
+        (start, end)
+    };
+    (start <= end && start < total).then_some((start, end))
+}
+
+fn stream_file(path: PathBuf, range: Option<&str>) -> Response {
+    let Ok(total) = fs::metadata(&path).map(|metadata| metadata.len()) else {
+        return Response::text("404 Not Found", "Missing file");
+    };
+    let content_type = audio_type(&path);
+    let (status, start, end) = match range {
+        Some(range) => match parse_range(range, total) {
+            Some((start, end)) => ("206 Partial Content", start, end),
+            None => return Response::text("416 Range Not Satisfiable", "Bad range"),
+        },
+        None => ("200 OK", 0, total.saturating_sub(1)),
+    };
+    Response {
+        status,
+        content_type,
+        body: Body::File {
+            path,
+            start,
+            end,
+            total,
+        },
+    }
+}
+
+fn image_type(bytes: &[u8]) -> &'static str {
+    if bytes.starts_with(b"\x89PNG") {
+        "image/png"
+    } else if bytes.starts_with(b"RIFF") && bytes.get(8..12) == Some(b"WEBP") {
+        "image/webp"
+    } else if bytes.starts_with(b"GIF8") {
+        "image/gif"
+    } else {
+        "image/jpeg"
+    }
+}
+
+/// Answers one request. Kept free of socket I/O so it can be tested.
+#[allow(clippy::too_many_arguments)]
 pub fn respond(
     method: &str,
     target: &str,
+    range: Option<&str>,
     body: &[u8],
     token: &str,
     shared: &Shared,
     commands: &mpsc::Sender<Command>,
 ) -> Response {
     let (path, query) = target.split_once('?').unwrap_or((target, ""));
-    let supplied = query
-        .split('&')
-        .find_map(|pair| pair.strip_prefix("t="))
-        .unwrap_or("");
+    let supplied = param(query, "t").unwrap_or("");
     if !tokens_match(supplied, token) {
         return Response::text(
             "403 Forbidden",
@@ -123,17 +265,27 @@ pub fn respond(
     match (method, path) {
         ("GET", "/") => Response::new("200 OK", "text/html; charset=utf-8", PAGE),
         ("GET", "/api/state") => match shared.snapshot.lock() {
-            Ok(snapshot) => Response::new(
-                "200 OK",
-                "application/json",
-                serde_json::to_vec(&*snapshot).unwrap_or_default(),
-            ),
+            Ok(snapshot) => Response::json(&*snapshot),
             Err(_) => Response::text("500 Internal Server Error", "Unavailable"),
         },
-        ("GET", "/api/cover") => match shared.cover.lock().ok().and_then(|cover| cover.clone()) {
-            Some(png) => Response::new("200 OK", "image/png", png),
-            None => Response::text("404 Not Found", "No cover"),
+        ("GET", "/api/library") => match shared.library.lock() {
+            Ok(library) => Response::json(&serde_json::json!({
+                "version": library.version,
+                "tracks": library.entries,
+            })),
+            Err(_) => Response::text("500 Internal Server Error", "Unavailable"),
         },
+        ("GET", "/api/audio") => match requested_file(query, shared) {
+            Some(path) => stream_file(path, range),
+            None => Response::text("404 Not Found", "No such track"),
+        },
+        ("GET", "/api/cover") => {
+            match requested_file(query, shared).and_then(|path| crate::metadata::read_cover(&path))
+            {
+                Some(image) => Response::new("200 OK", image_type(&image), image),
+                None => Response::text("404 Not Found", "No cover"),
+            }
+        }
         ("POST", "/api/command") => match serde_json::from_slice::<Command>(body) {
             Ok(command) => {
                 let _ = commands.send(command);
@@ -238,7 +390,8 @@ fn serve(
 ) -> io::Result<()> {
     stream.set_nonblocking(false)?;
     stream.set_read_timeout(Some(Duration::from_secs(5)))?;
-    stream.set_write_timeout(Some(Duration::from_secs(10)))?;
+    // Long enough for a phone that pauses reading while its audio buffer is full.
+    stream.set_write_timeout(Some(Duration::from_secs(120)))?;
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut request_line = String::new();
     let mut header_bytes = reader.read_line(&mut request_line)?;
@@ -246,7 +399,7 @@ fn serve(
     let (Some(method), Some(target)) = (parts.next(), parts.next()) else {
         return Ok(());
     };
-    let mut length = 0;
+    let (mut length, mut range) = (0, None);
     loop {
         let mut line = String::new();
         let read = reader.read_line(&mut line)?;
@@ -257,6 +410,8 @@ fn serve(
         if let Some((name, value)) = line.split_once(':') {
             if name.eq_ignore_ascii_case("content-length") {
                 length = value.trim().parse().unwrap_or(0);
+            } else if name.eq_ignore_ascii_case("range") {
+                range = Some(value.trim().to_owned());
             }
         }
     }
@@ -267,20 +422,48 @@ fn serve(
     reader.read_exact(&mut body)?;
     write_response(
         stream,
-        respond(method, target, &body, token, shared, commands),
+        respond(
+            method,
+            target,
+            range.as_deref(),
+            &body,
+            token,
+            shared,
+            commands,
+        ),
     )
 }
 
 fn write_response(mut stream: TcpStream, response: Response) -> io::Result<()> {
+    let (length, extra) = match &response.body {
+        Body::Bytes(bytes) => (bytes.len() as u64, String::new()),
+        Body::File {
+            start, end, total, ..
+        } => (
+            end - start + 1,
+            if response.status.starts_with("206") {
+                format!("Accept-Ranges: bytes\r\nContent-Range: bytes {start}-{end}/{total}\r\n")
+            } else {
+                "Accept-Ranges: bytes\r\n".to_owned()
+            },
+        ),
+    };
     write!(
         stream,
-        "HTTP/1.1 {}\r\nContent-Type: {}\r\nContent-Length: {}\r\nCache-Control: no-store\r\n\
+        "HTTP/1.1 {}\r\nContent-Type: {}\r\nContent-Length: {length}\r\n{extra}Cache-Control: no-store\r\n\
          X-Content-Type-Options: nosniff\r\nReferrer-Policy: no-referrer\r\nConnection: close\r\n\r\n",
-        response.status,
-        response.content_type,
-        response.body.len()
+        response.status, response.content_type,
     )?;
-    stream.write_all(&response.body)?;
+    match response.body {
+        Body::Bytes(bytes) => stream.write_all(&bytes)?,
+        Body::File {
+            path, start, end, ..
+        } => {
+            let mut file = fs::File::open(path)?;
+            file.seek(SeekFrom::Start(start))?;
+            io::copy(&mut file.take(end - start + 1), &mut stream)?;
+        }
+    }
     stream.flush()
 }
 
@@ -333,17 +516,49 @@ pub fn qr_area(text: &str, size: i32) -> gtk::DrawingArea {
 mod tests {
     use super::*;
 
+    fn bytes(response: &Response) -> &[u8] {
+        match &response.body {
+            Body::Bytes(bytes) => bytes,
+            Body::File { .. } => panic!("expected bytes"),
+        }
+    }
+
+    fn call_with(
+        shared: &Shared,
+        method: &str,
+        target: &str,
+        range: Option<&str>,
+        body: &str,
+    ) -> (Response, mpsc::Receiver<Command>) {
+        let (sender, receiver) = mpsc::channel();
+        let response = respond(
+            method,
+            target,
+            range,
+            body.as_bytes(),
+            "secret",
+            shared,
+            &sender,
+        );
+        (response, receiver)
+    }
+
     fn call(method: &str, target: &str, body: &str) -> (Response, mpsc::Receiver<Command>) {
         let shared = Shared::default();
         shared.snapshot.lock().unwrap().title = "Undertow".into();
-        let (sender, receiver) = mpsc::channel();
-        let response = respond(method, target, body.as_bytes(), "secret", &shared, &sender);
-        (response, receiver)
+        call_with(&shared, method, target, None, body)
     }
 
     #[test]
     fn requests_without_the_token_are_refused() {
-        for target in ["/", "/?t=wrong", "/api/state?t=secre", "/api/state"] {
+        for target in [
+            "/",
+            "/?t=wrong",
+            "/api/state?t=secre",
+            "/api/state",
+            "/api/audio?src=queue&i=0",
+            "/api/library?t=",
+        ] {
             assert_eq!(
                 call("GET", target, "").0.status,
                 "403 Forbidden",
@@ -359,9 +574,9 @@ mod tests {
     fn the_page_and_state_are_served_with_the_token() {
         let (page, _) = call("GET", "/?t=secret", "");
         assert_eq!(page.status, "200 OK");
-        assert!(String::from_utf8(page.body).unwrap().contains("<html"));
-        let (state, _) = call("GET", "/api/state?t=secret&_=1", "");
-        let json: serde_json::Value = serde_json::from_slice(&state.body).unwrap();
+        assert!(String::from_utf8_lossy(bytes(&page)).contains("<html"));
+        let (state, _) = call("GET", "/api/state?_=1&t=secret", "");
+        let json: serde_json::Value = serde_json::from_slice(bytes(&state)).unwrap();
         assert_eq!(json["title"], "Undertow");
     }
 
@@ -375,6 +590,17 @@ mod tests {
                 r#"{"action":"play_playlist","value":2}"#,
                 Command::PlayPlaylist(2),
             ),
+            (
+                r#"{"action":"play_library","value":7}"#,
+                Command::PlayLibrary(7),
+            ),
+            (
+                r#"{"action":"play_queue_at","value":{"index":3,"position_ms":4500}}"#,
+                Command::PlayQueueAt(Position {
+                    index: 3,
+                    position_ms: 4500,
+                }),
+            ),
         ] {
             let (response, commands) = call("POST", "/api/command?t=secret", body);
             assert_eq!(response.status, "204 No Content");
@@ -386,10 +612,107 @@ mod tests {
     }
 
     #[test]
-    fn the_server_answers_over_http() {
+    fn ranges_follow_http_rules() {
+        assert_eq!(parse_range("bytes=0-99", 1000), Some((0, 99)));
+        assert_eq!(parse_range("bytes=900-", 1000), Some((900, 999)));
+        assert_eq!(parse_range("bytes=-100", 1000), Some((900, 999)));
+        assert_eq!(parse_range("bytes=990-2000", 1000), Some((990, 999)));
+        for bad in [
+            "bytes=1000-",
+            "bytes=5-2",
+            "items=0-1",
+            "bytes=0-1,4-5",
+            "bytes=x-",
+        ] {
+            assert_eq!(parse_range(bad, 1000), None, "{bad}");
+        }
+    }
+
+    #[test]
+    fn audio_is_served_by_index_only() {
+        let directory = tempfile::tempdir().unwrap();
+        let track = directory.path().join("song.flac");
+        fs::write(&track, vec![7u8; 1000]).unwrap();
+        let shared = Shared::default();
+        *shared.queue_paths.lock().unwrap() = vec![track.clone()];
+        shared.library.lock().unwrap().paths = vec![track];
+
+        let (whole, _) = call_with(
+            &shared,
+            "GET",
+            "/api/audio?t=secret&src=queue&i=0",
+            None,
+            "",
+        );
+        assert_eq!((whole.status, whole.content_type), ("200 OK", "audio/flac"));
+        let (part, _) = call_with(
+            &shared,
+            "GET",
+            "/api/audio?t=secret&src=library&i=0",
+            Some("bytes=100-"),
+            "",
+        );
+        assert_eq!(part.status, "206 Partial Content");
+        assert!(matches!(
+            part.body,
+            Body::File {
+                start: 100,
+                end: 999,
+                total: 1000,
+                ..
+            }
+        ));
+        for target in [
+            "/api/audio?t=secret&src=queue&i=1",
+            "/api/audio?t=secret&src=/etc/passwd&i=0",
+            "/api/audio?t=secret&i=0",
+        ] {
+            let (response, _) = call_with(&shared, "GET", target, None, "");
+            assert_eq!(response.status, "404 Not Found", "{target}");
+        }
+    }
+
+    #[test]
+    fn the_library_is_listed_on_request() {
+        let shared = Shared::default();
+        {
+            let mut library = shared.library.lock().unwrap();
+            library.version = 4;
+            library.entries = vec![LibraryEntry {
+                title: "Patina".into(),
+                artist: "Ines Varga".into(),
+                album: "Copper Hours".into(),
+            }];
+        }
+        let (response, _) = call_with(&shared, "GET", "/api/library?t=secret", None, "");
+        let json: serde_json::Value = serde_json::from_slice(bytes(&response)).unwrap();
+        assert_eq!(json["version"], 4);
+        assert_eq!(json["tracks"][0]["album"], "Copper Hours");
+    }
+
+    #[test]
+    fn the_server_streams_partial_audio_over_http() {
+        let directory = tempfile::tempdir().unwrap();
+        let track = directory.path().join("song.mp3");
+        fs::write(&track, (0..=255u8).collect::<Vec<_>>()).unwrap();
         let shared = Arc::new(Shared::default());
+        *shared.queue_paths.lock().unwrap() = vec![track];
         let (sender, receiver) = mpsc::channel();
         let server = Server::start("abc".into(), shared, sender).unwrap();
+
+        let mut stream = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
+        write!(
+            stream,
+            "GET /api/audio?t=abc&src=queue&i=0 HTTP/1.1\r\nRange: bytes=250-\r\n\r\n"
+        )
+        .unwrap();
+        let mut reply = Vec::new();
+        stream.read_to_end(&mut reply).unwrap();
+        let text = String::from_utf8_lossy(&reply);
+        assert!(text.starts_with("HTTP/1.1 206"), "{text}");
+        assert!(text.contains("Content-Range: bytes 250-255/256"));
+        assert!(reply.ends_with(&[250, 251, 252, 253, 254, 255]));
+
         let mut stream = TcpStream::connect(("127.0.0.1", server.port)).unwrap();
         let body = r#"{"action":"next"}"#;
         write!(

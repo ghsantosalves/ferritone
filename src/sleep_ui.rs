@@ -16,6 +16,26 @@ impl Player {
         }
     }
 
+    /// Called from `poll`: asks the session not to lock or suspend while music plays.
+    pub(crate) fn update_inhibit(&self) {
+        let wanted = self.playing.get() && !self.state.borrow().allow_sleep;
+        let cookie = self.inhibit_cookie.get();
+        let Some(app) = self.window.application() else {
+            return;
+        };
+        if wanted && cookie == 0 {
+            let cookie = app.inhibit(
+                Some(&self.window),
+                gtk::ApplicationInhibitFlags::IDLE | gtk::ApplicationInhibitFlags::SUSPEND,
+                Some(self.text("Playing music", "Tocando música")),
+            );
+            self.inhibit_cookie.set(cookie);
+        } else if !wanted && cookie != 0 {
+            app.uninhibit(cookie);
+            self.inhibit_cookie.set(0);
+        }
+    }
+
     /// Called from `poll`: fades and pauses when a timed sleep is due.
     pub(crate) fn poll_sleep(&self) {
         let timer = self.sleep.get();

@@ -70,7 +70,9 @@ In **Preferences**, turn on **Submit listens to ListenBrainz** and paste the use
 
 ## Phone remote
 
-Open **Phone remote** in the playback menu and turn on **Allow control from a phone**. Scan the QR code with your phone's camera to open a page in the phone's browser that plays and pauses, skips tracks, seeks, changes the volume, shuffle, and repeat, and plays any track in the queue or any saved playlist. The phone must be on the same network as the computer; nothing goes through the internet.
+Open **Phone remote** in the playback menu and turn on **Allow control from a phone**. Scan the QR code with your phone's camera to open a page in the phone's browser that plays and pauses, skips tracks, seeks, changes the volume, shuffle, and repeat, and plays any track from the queue, the whole library (with search), or a saved playlist. **Open on this computer** opens the same page in the computer's browser. The phone must be on the same network as the computer; nothing goes through the internet.
+
+At the top of the page, **Play on** chooses where the sound comes from. **Computer** controls Ferritone as usual. **Phone** pauses the computer and streams the music to the phone's browser, starting where the computer was, with the phone's lock-screen controls; switching back to **Computer** continues there from the phone's track and position. The phone plays the files as they are, so formats its browser cannot decode (FLAC on some older iPhones, for example) are skipped.
 
 The link contains a secret code, and Ferritone refuses requests without it, so other devices on the network cannot control playback. **New link** replaces the code and disconnects phones that have the old link. The remote stays on across restarts until you turn it off. Ferritone listens on port 47123, or on another free port if that one is taken; if the computer has a firewall, allow that port on your home network.
 
@@ -89,6 +91,8 @@ cp extras/gnome-shell-dock-controls/* ~/.local/share/gnome-shell/extensions/$uui
 ```
 
 Log out and back in, then run `gnome-extensions enable $uuid`.
+
+While music plays, Ferritone keeps the screen from locking and the computer from sleeping; turn off **Keep the computer awake while playing** in **Preferences → Audio** to allow it.
 
 In **Preferences → Audio**, ReplayGain levels volume using embedded gain tags. **Track gain** suits mixed queues, and **Album gain** preserves the relative level of an album and falls back to track gain when needed. The optional peak protection caps boosting using the file's peak tag. Tracks without gain tags play at their original level.
 

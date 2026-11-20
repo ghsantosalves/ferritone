@@ -1,7 +1,7 @@
 //! The phone remote: starting the server, applying its commands, and the QR code window.
 
 use super::*;
-use remote::{Command, Entry, PlaylistEntry, Server};
+use remote::{Command, Entry, LibraryEntry, PlaylistEntry, Position, Server};
 
 /// Lists are copied to the phone every this many polls; playback state on every poll.
 const LIST_SYNC_POLLS: u32 = 10;
@@ -26,7 +26,7 @@ impl Player {
             self.remote_sender.clone(),
         )?;
         self.remote.replace(Some(server));
-        self.remote_cover.replace(None);
+        self.remote_library_signature.replace(None);
         self.sync_remote(true);
         Ok(())
     }
@@ -43,6 +43,15 @@ impl Player {
                 .as_ref()?
                 .url(remote::local_ip()?, &self.state.borrow().remote_token),
         )
+    }
+
+    /// The link for opening the remote page in this computer's own browser.
+    pub(crate) fn remote_local_url(&self) -> Option<String> {
+        let server = self.remote.borrow();
+        Some(server.as_ref()?.url(
+            std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST),
+            &self.state.borrow().remote_token,
+        ))
     }
 
     /// Called from `poll`: applies phone commands and refreshes what the phone shows.
@@ -67,6 +76,7 @@ impl Player {
                 .cloned()
                 .collect();
             self.scan_metadata(&queue);
+            self.sync_remote_library();
         }
         self.sync_remote(lists);
     }
@@ -85,6 +95,30 @@ impl Player {
                     self.start(index, 0);
                 }
             }
+            Command::Pause => {
+                if self.playing.get() {
+                    self.toggle();
+                }
+            }
+            Command::PlayQueueAt(Position { index, position_ms }) => {
+                if index < self.state.borrow().queue.len() {
+                    self.start(index, position_ms);
+                }
+            }
+            Command::PlayLibrary(index) => {
+                if let Some(track) = self.remote_library_track(index) {
+                    self.play_library_track(&track);
+                }
+            }
+            Command::PlayLibraryAt(Position { index, position_ms }) => {
+                if let Some(track) = self.remote_library_track(index) {
+                    self.play_library_track(&track);
+                    if position_ms > 0 {
+                        let current = self.state.borrow().current;
+                        self.start(current, position_ms);
+                    }
+                }
+            }
             Command::PlayPlaylist(index) => {
                 let tracks = self
                     .state
@@ -97,6 +131,73 @@ impl Player {
                 }
             }
         }
+    }
+
+    fn remote_library_track(&self, index: usize) -> Option<PathBuf> {
+        self.remote_shared
+            .library
+            .lock()
+            .ok()?
+            .paths
+            .get(index)
+            .cloned()
+    }
+
+    /// Rebuilds the library list for the phone when the library or its tags change.
+    fn sync_remote_library(self: &Rc<Self>) {
+        let tracks: Vec<PathBuf> = {
+            let state = self.state.borrow();
+            state
+                .tracks
+                .iter()
+                .filter(|track| state.library_track_visible(track))
+                .cloned()
+                .collect()
+        };
+        // Cheap to compare every couple of seconds; changes when tracks or tags arrive.
+        let signature = (
+            tracks.len(),
+            tracks.first().cloned(),
+            self.info.borrow().len(),
+        );
+        if self.remote_library_signature.borrow().as_ref() == Some(&signature) {
+            return;
+        }
+        self.scan_metadata(&tracks);
+        let info = self.info.borrow();
+        let albums = albums::group_albums(&tracks, &info, library_collation_key);
+        let paths: Vec<PathBuf> = albums.into_iter().flat_map(|album| album.tracks).collect();
+        let entries = paths
+            .iter()
+            .map(|path| {
+                let metadata = info.get(path);
+                LibraryEntry {
+                    title: metadata
+                        .and_then(|info| info.title.clone())
+                        .unwrap_or_else(|| title(path)),
+                    artist: metadata
+                        .and_then(|info| info.artist.clone())
+                        .unwrap_or_default(),
+                    album: metadata
+                        .and_then(|info| info.album.clone())
+                        .unwrap_or_default(),
+                }
+            })
+            .collect();
+        drop(info);
+        let version = match self.remote_shared.library.lock() {
+            Ok(mut library) => {
+                library.version += 1;
+                library.entries = entries;
+                library.paths = paths;
+                library.version
+            }
+            Err(_) => return,
+        };
+        if let Ok(mut snapshot) = self.remote_shared.snapshot.lock() {
+            snapshot.library_version = version;
+        }
+        self.remote_library_signature.replace(Some(signature));
     }
 
     fn sync_remote(&self, lists: bool) {
@@ -122,17 +223,6 @@ impl Player {
             .filter(|duration| *duration > 0)
             .or_else(|| metadata.and_then(|info| info.duration_ms))
             .unwrap_or(0);
-        let cover = self.cover.borrow().clone();
-        let cover_changed = *self.remote_cover.borrow() != cover;
-        if cover_changed {
-            let png = cover
-                .as_ref()
-                .map(|texture| texture.save_to_png_bytes().to_vec());
-            if let Ok(mut shared) = self.remote_shared.cover.lock() {
-                *shared = png;
-            }
-            self.remote_cover.replace(cover);
-        }
         let Ok(mut snapshot) = self.remote_shared.snapshot.lock() else {
             return;
         };
@@ -161,10 +251,10 @@ impl Player {
         }
         .to_owned();
         snapshot.current = track.map(|_| state.current);
-        if cover_changed {
-            snapshot.cover = snapshot.cover.wrapping_add(1);
-        }
         if lists {
+            if let Ok(mut paths) = self.remote_shared.queue_paths.lock() {
+                *paths = state.queue.iter().take(MAX_REMOTE_QUEUE).cloned().collect();
+            }
             snapshot.queue = state
                 .queue
                 .iter()
@@ -242,11 +332,30 @@ impl Player {
                     )));
                     return;
                 }
+                let open_here = button(
+                    player.text("Open on this computer", "Abrir neste computador"),
+                    &player,
+                    |player| {
+                        if let Some(url) = player.remote_local_url() {
+                            gtk::UriLauncher::new(&url).launch(
+                                Some(&player.window),
+                                gio::Cancellable::NONE,
+                                |_| {},
+                            );
+                        }
+                    },
+                );
+                open_here.set_tooltip_text(Some(player.text(
+                    "Open the remote page in this computer's browser",
+                    "Abre a página do controle no navegador deste computador",
+                )));
                 let Some(url) = player.remote_url() else {
                     details.append(&hint(player.text(
                         "This computer is not connected to a network. Connect it to Wi-Fi or a cable and open this window again.",
                         "Este computador não está conectado a uma rede. Conecte-o ao Wi-Fi ou a um cabo e abra esta janela de novo.",
                     )));
+                    open_here.set_halign(gtk::Align::Start);
+                    details.append(&open_here);
                     return;
                 };
                 let code = remote::qr_area(&url, 240);
@@ -286,8 +395,10 @@ impl Player {
                     "Disconnect phones that have the current link",
                     "Desconecta os celulares que têm o link atual",
                 )));
-                reset.set_halign(gtk::Align::Start);
-                details.append(&reset);
+                let buttons = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+                buttons.append(&open_here);
+                buttons.append(&reset);
+                details.append(&buttons);
             }
         };
         fill_details();

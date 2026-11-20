@@ -34,6 +34,11 @@
   .backdrop img.shown { opacity: .42; }
 
   .output { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
+  /* On phones the label goes above the choice, so neither label gets cut. */
+  @media (max-width: 480px) {
+    .output { flex-direction: column; align-items: stretch; gap: 7px; }
+    .output > span { margin-left: 4px; }
+  }
   .output > span { color: var(--muted); font-size: .72rem; font-weight: 700; text-transform: uppercase;
     letter-spacing: .08em; white-space: nowrap; }
   .segmented { display: flex; gap: 2px; flex: 1; min-width: 0; padding: 3px; border-radius: 999px;
@@ -64,12 +69,15 @@
     background: linear-gradient(to right, var(--accent) var(--fill), color-mix(in srgb, var(--text) 16%, transparent) var(--fill)); }
   input[type=range]::-moz-range-track { height: 5px; border-radius: 999px;
     background: linear-gradient(to right, var(--accent) var(--fill), color-mix(in srgb, var(--text) 16%, transparent) var(--fill)); }
+  /* The ring around the knob only shows while it is being dragged. */
   input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 15px; height: 15px; margin-top: -5px;
-    border-radius: 50%; background: var(--accent); border: 0;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); transition: transform .15s; }
+    border-radius: 50%; background: var(--accent); border: 0; box-shadow: 0 1px 3px rgb(0 0 0 / 25%);
+    transition: transform .15s, box-shadow .15s; }
   input[type=range]::-moz-range-thumb { width: 15px; height: 15px; border-radius: 50%; background: var(--accent); border: 0;
-    box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
-  input[type=range]:active::-webkit-slider-thumb { transform: scale(1.25); }
+    box-shadow: 0 1px 3px rgb(0 0 0 / 25%); }
+  input[type=range]:active::-webkit-slider-thumb { transform: scale(1.2);
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
+  input[type=range]:active::-moz-range-thumb { box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent) 22%, transparent); }
   .time { display: flex; justify-content: space-between; width: 100%; margin-top: 2px; color: var(--muted);
     font-size: .78rem; font-weight: 600; font-variant-numeric: tabular-nums; }
 

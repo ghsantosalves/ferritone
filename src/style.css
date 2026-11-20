@@ -422,8 +422,10 @@ scale slider {
     border-radius: 999px;
     background: @player_accent;
     border: 0;
-    box-shadow: 0 0 0 3px alpha(@player_accent, 0.22);
+    box-shadow: 0 1px 2px alpha(black, 0.25);
 }
+/* The ring around the knob only shows while it is hovered or dragged. */
+scale slider:hover, scale slider:active { box-shadow: 0 0 0 3px alpha(@player_accent, 0.22); }
 scale:disabled slider { background: mix(@player_bg, @player_fg, 0.3); box-shadow: none; }
 
 /* Album grid and pages. */

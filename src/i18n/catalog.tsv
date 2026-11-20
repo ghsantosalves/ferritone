@@ -191,3 +191,12 @@ Waveform style	Estilo de la forma de onda	Style de la forme d’onde
 Duration	Duración	Durée
 Skipped a track that could not be played.	Se omitió una pista que no se pudo reproducir.	Une piste illisible a été ignorée.
 Several tracks in a row could not be played. Check your audio output.	Varias pistas seguidas no se pudieron reproducir. Revisa la salida de audio.	Plusieurs pistes d’affilée n’ont pas pu être lues. Vérifiez la sortie audio.
+Phone remote	Control desde el móvil	Télécommande sur téléphone
+Allow control from a phone	Permitir el control desde un móvil	Autoriser le contrôle depuis un téléphone
+When this is on, a phone on the same Wi-Fi network can play, pause, skip tracks, and choose playlists from its browser.	Con esta opción activada, un móvil en la misma red Wi-Fi puede reproducir, pausar, cambiar de pista y elegir listas desde su navegador.	Lorsque cette option est activée, un téléphone sur le même réseau Wi-Fi peut lire, mettre en pause, changer de piste et choisir des listes depuis son navigateur.
+This computer is not connected to a network. Connect it to Wi-Fi or a cable and open this window again.	Este equipo no está conectado a una red. Conéctalo a una red Wi-Fi o por cable y vuelve a abrir esta ventana.	Cet ordinateur n’est connecté à aucun réseau. Connectez-le au Wi-Fi ou par câble, puis rouvrez cette fenêtre.
+QR code for the phone remote	Código QR del control desde el móvil	Code QR de la télécommande sur téléphone
+Scan the code with your phone's camera. The phone must be on the same Wi-Fi network as this computer.	Escanea el código con la cámara del móvil. El móvil debe estar en la misma red Wi-Fi que este equipo.	Scannez le code avec l’appareil photo du téléphone. Le téléphone doit être sur le même réseau Wi-Fi que cet ordinateur.
+New link	Nuevo enlace	Nouveau lien
+Disconnect phones that have the current link	Desconecta los móviles que tienen el enlace actual	Déconnecte les téléphones qui ont le lien actuel
+The phone remote could not start.	No se pudo iniciar el control desde el móvil.	Impossible de démarrer la télécommande sur téléphone.

@@ -356,6 +356,7 @@ impl Player {
             }
         }
         self.plan_handoff();
+        self.poll_remote();
         self.update_position();
         self.update_transport();
         // Keep the resume point recent in case the session ends without closing the window.

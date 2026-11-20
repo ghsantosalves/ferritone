@@ -58,6 +58,12 @@ Drag the timed lyrics up or down in the main player or mini player. Release when
 
 Enable **Look up lyrics online** separately to search [LRCLIB](https://lrclib.net/docs) when local lyrics are unavailable. This option requires `curl` on the system. Ferritone sends the track title, artist, and available album and duration metadata. If the direct lookup has no synchronized lyrics, Ferritone checks alternate results for a compatible recording before falling back to plain text. The alternate search compares artist and title without accents or punctuation. Online lyrics are synchronized when durations are within two seconds and available album tags agree. A result from another edition can still be read as plain lyrics in the mini player. Audio and file paths stay on the device. Both lyric options are off by default. Online results are kept in memory for the current session.
 
+## Phone remote
+
+Open **Phone remote** in the playback menu and turn on **Allow control from a phone**. Scan the QR code with your phone's camera to open a page in the phone's browser that plays and pauses, skips tracks, seeks, changes the volume, shuffle, and repeat, and plays any track in the queue or any saved playlist. The phone must be on the same network as the computer; nothing goes through the internet.
+
+The link contains a secret code, and Ferritone refuses requests without it, so other devices on the network cannot control playback. **New link** replaces the code and disconnects phones that have the old link. The remote stays on across restarts until you turn it off. Ferritone listens on port 47123, or on another free port if that one is taken; if the computer has a firewall, allow that port on your home network.
+
 ## Desktop media controls
 
 Ferritone exposes track details and playback controls over MPRIS. In GNOME, open the clock and notifications panel to access the current track, play or pause, and skip tracks. Desktop media keys work on environments that route them to MPRIS players.
@@ -158,6 +164,7 @@ M3U8 exports use relative paths for tracks below the export folder and absolute 
 | Track context menu and keyboard shortcuts | `src/track_menu.rs` |
 | Desktop media integration | `src/mpris.rs` |
 | ReplayGain and peak protection | `src/replay_gain.rs` |
+| Phone remote server, page, and window | `src/remote.rs`, `src/remote.html`, `src/remote_ui.rs` |
 | Debian and Flatpak packaging | `packaging/` |
 
 ## License

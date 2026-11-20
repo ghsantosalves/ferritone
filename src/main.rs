@@ -12,6 +12,8 @@ mod now_playing;
 mod pages;
 mod playback;
 mod playlist_file;
+mod remote;
+mod remote_ui;
 mod replay_gain;
 mod search;
 mod search_ui;
@@ -28,7 +30,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
     rc::Rc,
-    sync::{Arc, Mutex},
+    sync::{Arc, Mutex, mpsc},
     time::{Duration, Instant},
 };
 
@@ -150,6 +152,14 @@ struct Player {
     autosave: RefCell<playback::Autosave>,
     /// The next track, handed to GStreamer before the current one ends.
     handoff: Arc<Mutex<playback::Handoff>>,
+    /// The phone remote's server while it runs.
+    remote: RefCell<Option<remote::Server>>,
+    remote_shared: Arc<remote::Shared>,
+    remote_sender: mpsc::Sender<remote::Command>,
+    remote_receiver: mpsc::Receiver<remote::Command>,
+    remote_ticks: Cell<u32>,
+    /// The cover last sent to the phone.
+    remote_cover: RefCell<Option<gdk::Texture>>,
 }
 
 fn main() -> glib::ExitCode {
@@ -197,6 +207,7 @@ fn build(app: &gtk::Application) {
     pipeline.set_property("volume", 0.7f64);
     // Queue the next file before the current one ends so tracks follow each other without a gap.
     let handoff = Arc::new(Mutex::new(playback::Handoff::default()));
+    let (remote_sender, remote_receiver) = mpsc::channel();
     let shared = handoff.clone();
     pipeline.connect("about-to-finish", false, move |values| {
         let next = shared.lock().ok().and_then(|mut handoff| handoff.take());
@@ -399,6 +410,12 @@ fn build(app: &gtk::Application) {
         failures: RefCell::default(),
         autosave: RefCell::new(playback::Autosave::new(Instant::now())),
         handoff,
+        remote: RefCell::new(None),
+        remote_shared: Arc::default(),
+        remote_sender,
+        remote_receiver,
+        remote_ticks: Cell::new(0),
+        remote_cover: RefCell::new(None),
     });
 
     let top = gtk::Box::new(gtk::Orientation::Horizontal, 0);
@@ -623,6 +640,20 @@ fn build(app: &gtk::Application) {
                     mini::open(player);
                 },
             ));
+            let popup = navigation_popup.downgrade();
+            sections.append(&shortcut_button(
+                player.text("Phone remote", "Controle pelo celular"),
+                "",
+                None,
+                false,
+                &player,
+                move |player| {
+                    if let Some(popup) = popup.upgrade() {
+                        popup.popdown();
+                    }
+                    player.show_remote();
+                },
+            ));
             if let Some(previous) = player
                 .playlist_menu_delete
                 .parent()
@@ -797,6 +828,11 @@ fn build(app: &gtk::Application) {
     player.update_repeat();
     player.load_current_track();
     player.update_transport();
+    if player.state.borrow().remote_enabled {
+        if let Err(error) = player.start_remote() {
+            eprintln!("Could not start the phone remote: {error}");
+        }
+    }
     if let Some(error) = load_error {
         eprintln!("Could not read library: {error}");
         player.message(player.text(

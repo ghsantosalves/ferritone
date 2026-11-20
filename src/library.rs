@@ -32,6 +32,9 @@ pub struct Library {
     pub replay_gain: crate::replay_gain::Settings,
     pub mini_visual: MiniVisual,
     pub mini_display: Option<MiniDisplay>,
+    pub remote_enabled: bool,
+    /// The secret in the phone remote's link; kept so a bookmarked link keeps working.
+    pub remote_token: String,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]

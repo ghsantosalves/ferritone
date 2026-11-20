@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1e1d1b">
+<meta name="referrer" content="no-referrer">
+<title>Ferritone</title>
+<style>
+  :root {
+    --bg: #1e1d1b; --surface: #2a2926; --raised: #34332f; --text: #f2efe9;
+    --muted: #a8a39a; --accent: #ee853f; --accent-text: #1e1d1b; --line: #3d3b37;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body {
+    font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Cantarell, sans-serif;
+    padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    max-width: 520px; margin: 0 auto;
+  }
+  .now { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .cover {
+    width: min(72vw, 300px); aspect-ratio: 1; border-radius: 12px; background: var(--surface);
+    display: grid; place-items: center; overflow: hidden; box-shadow: 0 8px 28px rgb(0 0 0 / 35%);
+  }
+  .cover img { width: 100%; height: 100%; object-fit: cover; display: none; }
+  .cover svg { width: 38%; fill: var(--muted); }
+  .meta { text-align: center; width: 100%; min-height: 3.2em; }
+  .title { font-size: 1.25rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .artist { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .time { display: flex; justify-content: space-between; color: var(--muted); font-size: .85rem;
+    font-variant-numeric: tabular-nums; width: 100%; margin-top: -6px; }
+  input[type=range] { width: 100%; accent-color: var(--accent); height: 28px; margin: 0; }
+  .controls { display: flex; align-items: center; justify-content: space-between; width: 100%; max-width: 340px; }
+  button {
+    border: 0; background: none; color: var(--text); padding: 0; cursor: pointer;
+    display: grid; place-items: center; border-radius: 999px; width: 52px; height: 52px;
+  }
+  button svg { width: 26px; height: 26px; fill: currentColor; }
+  button:active { background: var(--raised); }
+  button.play { width: 72px; height: 72px; background: var(--accent); color: var(--accent-text); }
+  button.play svg { width: 34px; height: 34px; }
+  button.toggle { color: var(--muted); }
+  button.toggle.on { color: var(--accent); }
+  .badge { position: relative; }
+  .badge span { position: absolute; right: 9px; bottom: 9px; font-size: 10px; font-weight: 800; }
+  .volume { display: flex; align-items: center; gap: 10px; width: 100%; }
+  .volume svg { width: 22px; height: 22px; fill: var(--muted); flex: none; }
+  .tabs { display: flex; gap: 8px; margin: 22px 0 8px; }
+  .tabs button { width: auto; height: 38px; padding: 0 16px; background: var(--surface);
+    color: var(--muted); font: inherit; font-weight: 600; }
+  .tabs button.on { background: var(--raised); color: var(--text); }
+  ul { list-style: none; margin: 0; padding: 0; }
+  li { display: flex; align-items: center; gap: 12px; padding: 11px 10px; border-radius: 8px; cursor: pointer; }
+  li:active { background: var(--raised); }
+  li + li { border-top: 1px solid var(--line); }
+  li .n { color: var(--muted); width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; flex: none; }
+  li .t { min-width: 0; flex: 1; }
+  li .t div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  li .t .s { color: var(--muted); font-size: .85rem; }
+  li.current .t div:first-child, li.current .n { color: var(--accent); font-weight: 700; }
+  .empty, .offline { color: var(--muted); text-align: center; padding: 18px; }
+  .offline { display: none; background: var(--surface); border-radius: 8px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="offline" id="offline"></div>
+<section class="now">
+  <div class="cover">
+    <img id="cover" alt="">
+    <svg id="note" viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+  </div>
+  <div class="meta">
+    <div class="title" id="title"></div>
+    <div class="artist" id="artist"></div>
+  </div>
+  <input type="range" id="seek" min="0" max="1" value="0" step="1">
+  <div class="time"><span id="position">0:00</span><span id="duration">0:00</span></div>
+  <div class="controls">
+    <button class="toggle" id="shuffle"><svg viewBox="0 0 24 24"><path d="M10.6 9.2 5.4 4 4 5.4l5.2 5.2 1.4-1.4zM14.5 4l2 2L4 18.6 5.4 20 18 7.5l2 2V4h-5.5zm.3 9.4-1.4 1.4 3.1 3.1-2 2H20v-5.5l-2 2-3.2-3z"/></svg></button>
+    <button id="previous"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg></button>
+    <button class="play" id="toggle"><svg viewBox="0 0 24 24"><path id="toggle-icon" d="M8 5v14l11-7z"/></svg></button>
+    <button id="next"><svg viewBox="0 0 24 24"><path d="m6 18 8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg></button>
+    <button class="toggle badge" id="repeat"><svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg><span id="repeat-one"></span></button>
+  </div>
+  <div class="volume">
+    <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+    <input type="range" id="volume" min="0" max="100" value="70">
+  </div>
+</section>
+<div class="tabs">
+  <button id="tab-queue" class="on"></button>
+  <button id="tab-playlists"></button>
+</div>
+<ul id="list"></ul>
+<script>
+"use strict";
+const token = new URLSearchParams(location.search).get("t") || "";
+const words = {
+  en: { queue: "Queue", playlists: "Playlists", nothing: "Nothing playing", emptyQueue: "The queue is empty.",
+        emptyPlaylists: "No saved playlists.", tracks: n => n === 1 ? "1 track" : n + " tracks",
+        offline: "Can't reach Ferritone. Check that it is open and on the same Wi-Fi network." },
+  pt: { queue: "Fila", playlists: "Playlists", nothing: "Nenhuma faixa", emptyQueue: "A fila está vazia.",
+        emptyPlaylists: "Nenhuma playlist salva.", tracks: n => n === 1 ? "1 faixa" : n + " faixas",
+        offline: "Não foi possível falar com o Ferritone. Confira se ele está aberto e na mesma rede Wi-Fi." },
+  es: { queue: "Cola", playlists: "Listas", nothing: "Nada en reproducción", emptyQueue: "La cola está vacía.",
+        emptyPlaylists: "No hay listas guardadas.", tracks: n => n === 1 ? "1 pista" : n + " pistas",
+        offline: "No se puede conectar con Ferritone. Comprueba que esté abierto y en la misma red Wi-Fi." },
+  fr: { queue: "File d’attente", playlists: "Listes", nothing: "Aucune lecture", emptyQueue: "La file est vide.",
+        emptyPlaylists: "Aucune liste enregistrée.", tracks: n => n === 1 ? "1 piste" : n + " pistes",
+        offline: "Impossible de joindre Ferritone. Vérifiez qu’il est ouvert et sur le même réseau Wi-Fi." },
+};
+const $ = id => document.getElementById(id);
+let state = null, tab = "queue", seeking = false, changingVolume = false, coverVersion = -1, listKey = "";
+let w = words.en;
+
+function api(path) { return path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(token); }
+function send(action, value) {
+  const body = value === undefined ? { action } : { action, value };
+  fetch(api("/api/command"), { method: "POST", body: JSON.stringify(body) })
+    .then(() => setTimeout(refresh, 150)).catch(() => {});
+}
+function time(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60, r = String(s % 60).padStart(2, "0");
+  return h ? h + ":" + String(m).padStart(2, "0") + ":" + r : m + ":" + r;
+}
+function row(number, title, sub, current, onclick) {
+  const li = document.createElement("li");
+  if (current) li.className = "current";
+  const n = document.createElement("span"); n.className = "n"; n.textContent = number;
+  const t = document.createElement("div"); t.className = "t";
+  const a = document.createElement("div"); a.textContent = title;
+  const b = document.createElement("div"); b.className = "s"; b.textContent = sub;
+  t.append(a, b); li.append(n, t); li.onclick = onclick;
+  return li;
+}
+function renderList() {
+  const key = JSON.stringify([tab, state.current, tab === "queue" ? state.queue : state.playlists]);
+  if (key === listKey) return;
+  listKey = key;
+  const list = $("list"); list.replaceChildren();
+  const items = tab === "queue" ? state.queue : state.playlists;
+  if (!items.length) {
+    const li = document.createElement("li"); li.className = "empty";
+    li.textContent = tab === "queue" ? w.emptyQueue : w.emptyPlaylists;
+    list.append(li); return;
+  }
+  items.forEach((item, i) => list.append(tab === "queue"
+    ? row(i + 1, item.title, item.artist, i === state.current, () => send("play_queue", i))
+    : row(i + 1, item.name, w.tracks(item.tracks), false, () => send("play_playlist", i))));
+}
+function render() {
+  w = words[state.language] || words.en;
+  document.documentElement.lang = state.language || "en";
+  $("tab-queue").textContent = w.queue; $("tab-playlists").textContent = w.playlists;
+  $("tab-queue").classList.toggle("on", tab === "queue");
+  $("tab-playlists").classList.toggle("on", tab === "playlists");
+  $("title").textContent = state.title || w.nothing;
+  $("artist").textContent = [state.artist, state.album].filter(Boolean).join(" · ");
+  document.title = state.title ? state.title + " · Ferritone" : "Ferritone";
+  $("toggle-icon").setAttribute("d", state.playing ? "M6 19h4V5H6v14zm8-14v14h4V5h-4z" : "M8 5v14l11-7z");
+  if (!seeking) {
+    $("seek").max = Math.max(1, state.duration_ms);
+    $("seek").value = state.position_ms;
+    $("position").textContent = time(state.position_ms);
+  }
+  $("duration").textContent = time(state.duration_ms);
+  if (!changingVolume) $("volume").value = Math.round(state.volume * 100);
+  $("shuffle").classList.toggle("on", state.shuffle);
+  $("repeat").classList.toggle("on", state.repeat !== "off");
+  $("repeat-one").textContent = state.repeat === "track" ? "1" : "";
+  if (state.cover !== coverVersion) {
+    coverVersion = state.cover;
+    const img = $("cover");
+    img.onload = () => { img.style.display = "block"; $("note").style.display = "none"; };
+    img.onerror = () => { img.style.display = "none"; $("note").style.display = "block"; };
+    img.src = api("/api/cover?v=" + coverVersion);
+  }
+  renderList();
+}
+function refresh() {
+  fetch(api("/api/state"))
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(s => { state = s; $("offline").style.display = "none"; render(); })
+    .catch(() => { $("offline").textContent = w.offline; $("offline").style.display = "block"; });
+}
+$("toggle").onclick = () => send("toggle");
+$("next").onclick = () => send("next");
+$("previous").onclick = () => send("previous");
+$("shuffle").onclick = () => send("shuffle");
+$("repeat").onclick = () => send("repeat");
+$("seek").oninput = () => { seeking = true; $("position").textContent = time(+$("seek").value); };
+$("seek").onchange = () => { send("seek", +$("seek").value); seeking = false; };
+let volumeTimer = null;
+$("volume").oninput = () => {
+  changingVolume = true;
+  // Send at most a few updates per second while the finger moves.
+  if (!volumeTimer) volumeTimer = setTimeout(() => { volumeTimer = null; send("volume", +$("volume").value / 100); }, 120);
+};
+$("volume").onchange = () => { changingVolume = false; send("volume", +$("volume").value / 100); };
+$("tab-queue").onclick = () => { tab = "queue"; if (state) render(); };
+$("tab-playlists").onclick = () => { tab = "playlists"; if (state) render(); };
+refresh();
+setInterval(refresh, 1000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+</script>
+</body>
+</html>

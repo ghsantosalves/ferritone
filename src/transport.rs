@@ -91,6 +91,7 @@ impl Player {
         self.message("");
         self.failures.borrow_mut().started();
         self.play_counted.set(false);
+        self.track_started();
         self.cancel_handoff();
         let _ = self.pipeline.set_state(gst::State::Null);
         if let Some(waveform) = &self.waveform {
@@ -426,6 +427,7 @@ impl Player {
         self.failures.borrow_mut().started();
         self.play_counted.set(false);
         self.load_current_track();
+        self.track_started();
         self.update_transport();
         self.refresh_track_highlight();
         self.refresh_playing_playlist();

@@ -6,6 +6,7 @@ mod i18n;
 mod library;
 mod library_view;
 mod library_watch;
+mod listenbrainz;
 mod lyrics;
 mod lyrics_view;
 mod metadata;
@@ -18,6 +19,7 @@ mod playlist_file;
 mod remote;
 mod remote_ui;
 mod replay_gain;
+mod scrobble;
 mod search;
 mod search_ui;
 mod settings_ui;
@@ -174,6 +176,9 @@ struct Player {
     sleep: Cell<playback::SleepTimer>,
     /// Whether the current track's play has been counted.
     play_counted: Cell<bool>,
+    /// When the current track started, for ListenBrainz.
+    track_started_at: Cell<u64>,
+    listens_sending: Cell<bool>,
     /// Watches the library folders for added and removed files.
     library_monitors: RefCell<Vec<gio::FileMonitor>>,
     selected_album: RefCell<albums::AlbumKey>,
@@ -443,6 +448,8 @@ fn build(app: &gtk::Application) {
         remote_cover: RefCell::new(None),
         sleep: Cell::new(playback::SleepTimer::Off),
         play_counted: Cell::new(false),
+        track_started_at: Cell::new(0),
+        listens_sending: Cell::new(false),
         library_monitors: RefCell::default(),
         selected_album: RefCell::default(),
         selected_artist: RefCell::default(),
@@ -878,6 +885,7 @@ fn build(app: &gtk::Application) {
     player.load_current_track();
     player.update_transport();
     player.rescan_library();
+    player.start_listen_retries();
     if player.state.borrow().remote_enabled {
         if let Err(error) = player.start_remote() {
             eprintln!("Could not start the phone remote: {error}");

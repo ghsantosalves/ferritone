@@ -64,6 +64,10 @@ Enable **Look up lyrics online** separately to search [LRCLIB](https://lrclib.ne
 
 Open **Sleep timer** in the playback menu to pause playback after 15 to 90 minutes or at the end of the current track. A timed sleep lowers the volume gradually over the last 30 seconds, then pauses and restores the volume. Stopping at the end of a track leaves the next track ready, so **Play** continues from there.
 
+## ListenBrainz
+
+In **Preferences**, turn on **Submit listens to ListenBrainz** and paste the user token from your [ListenBrainz settings](https://listenbrainz.org/settings/); **Check token** confirms it. Ferritone then reports the track you are playing and, once you have played past half of it or four minutes, records the listen. It sends the artist, title, album, and length; file paths stay on the computer. Listens made while offline are kept and sent later. This option requires `curl` and is off by default.
+
 ## Phone remote
 
 Open **Phone remote** in the playback menu and turn on **Allow control from a phone**. Scan the QR code with your phone's camera to open a page in the phone's browser that plays and pauses, skips tracks, seeks, changes the volume, shuffle, and repeat, and plays any track in the queue or any saved playlist. The phone must be on the same network as the computer; nothing goes through the internet.

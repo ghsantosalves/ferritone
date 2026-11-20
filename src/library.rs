@@ -39,6 +39,10 @@ pub struct Library {
     pub play_counts: BTreeMap<PathBuf, u32>,
     /// When each track was last played, in seconds since the Unix epoch.
     pub last_played: BTreeMap<PathBuf, u64>,
+    pub listenbrainz_enabled: bool,
+    pub listenbrainz_token: String,
+    /// Listens not yet accepted by ListenBrainz, oldest first.
+    pub pending_listens: Vec<crate::listenbrainz::Listen>,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]

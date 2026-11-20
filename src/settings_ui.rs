@@ -582,6 +582,7 @@ impl Player {
             "A busca online envia as tags e a duração da faixa ao LRCLIB.",
         ));
         self.audio_preferences(&form);
+        self.listenbrainz_preferences(&form);
         let scroll = gtk::ScrolledWindow::builder()
             .hscrollbar_policy(gtk::PolicyType::Never)
             .vexpand(true)

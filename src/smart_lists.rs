@@ -14,7 +14,7 @@ enum SmartList {
 
 impl Player {
     /// Called from `poll`: counts the current track once it has played long enough.
-    pub(crate) fn count_play(&self) {
+    pub(crate) fn count_play(self: &Rc<Self>) {
         if self.play_counted.get() || !self.playing.get() {
             return;
         }
@@ -36,6 +36,7 @@ impl Player {
             .map_or(0, |elapsed| elapsed.as_secs());
         self.state.borrow_mut().record_play(&track, now);
         self.save();
+        self.scrobble_current();
     }
 
     pub(crate) fn smart_lists(self: &Rc<Self>) {

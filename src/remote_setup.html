@@ -34,17 +34,97 @@
   .note { color: var(--muted); font-size: .92rem; margin-top: 8px; }
   .try { margin-top: 26px; text-align: center; }
   .try a.button { background: var(--accent); color: var(--accent-text); border-color: var(--accent); padding: 12px 22px; }
+  h2 { font-size: 1.05rem; margin: 22px 0 10px; }
+  .install { display: none; margin-bottom: 18px; }
+  .install button { background: var(--accent); color: var(--accent-text); border-color: var(--accent); padding: 12px 20px; }
 </style>
 </head>
 <body>
 <h1 id="heading"></h1>
 <p class="lead" id="lead"></p>
+<div class="install" id="install"><button id="install-button"></button></div>
 <ol id="steps"></ol>
+<div id="groups"></div>
 <div class="try"><a class="button" id="try" href="/"></a></div>
 <script>
 "use strict";
+const params = new URLSearchParams(location.search);
+const token = params.get("t") || "";
+// Phones carry the token from the QR code link; this computer's browser needs none.
+function api(path) { return token ? path + (path.includes("?") ? "&" : "?") + "t=" + encodeURIComponent(token) : path; }
 const home = location.origin + "/";
-const browser = new URLSearchParams(location.search).get("browser") || "other";
+const browser = params.get("browser") || "other";
+const onComputer = ["localhost", "127.0.0.1", "ferritone"].includes(location.hostname);
+const mobile = params.get("device") === "mobile" || (params.get("device") !== "computer" && !onComputer);
+const apple = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) && "ontouchend" in document;
+const mobileText = {
+  en: { heading: "Ferritone on your home screen",
+        lead: "Add a shortcut that opens the remote with one tap, like an app. It keeps the access code.",
+        install: "Install Ferritone",
+        android: ["Android (Chrome)", ["Tap the <b>⋮</b> menu at the top right of Chrome.",
+          "Tap <b>Add to Home screen</b> (on some phones, <b>Install app</b>).",
+          "Confirm with <b>Add</b>. Ferritone's icon appears on the home screen."]],
+        ios: ["iPhone and iPad (Safari)", ["Tap <b>Share</b> (the square with an arrow pointing up).",
+          "Scroll and tap <b>Add to Home Screen</b>.", "Tap <b>Add</b>."]],
+        note: "The shortcut works on the same Wi-Fi network while Ferritone is open on the computer. If the computer's address changes, for example after the router restarts, scan the QR code again and recreate the shortcut." },
+  pt: { heading: "Ferritone na tela inicial",
+        lead: "Crie um atalho que abre o controle remoto com um toque, como um app. Ele já guarda o código de acesso.",
+        install: "Instalar o Ferritone",
+        android: ["Android (Chrome)", ["Toque no menu <b>⋮</b>, no canto superior direito do Chrome.",
+          "Toque em <b>Adicionar à tela inicial</b> (em alguns aparelhos, <b>Instalar app</b>).",
+          "Confirme em <b>Adicionar</b>. O ícone do Ferritone aparece na tela inicial."]],
+        ios: ["iPhone e iPad (Safari)", ["Toque em <b>Compartilhar</b> (o quadrado com uma seta para cima).",
+          "Role e toque em <b>Adicionar à Tela de Início</b>.", "Toque em <b>Adicionar</b>."]],
+        note: "O atalho funciona na mesma rede Wi-Fi e com o Ferritone aberto no computador. Se o endereço do computador mudar, por exemplo depois de reiniciar o roteador, escaneie o QR code de novo e recrie o atalho." },
+  es: { heading: "Ferritone en la pantalla de inicio",
+        lead: "Crea un acceso que abre el control remoto con un toque, como una app. Guarda el código de acceso.",
+        install: "Instalar Ferritone",
+        android: ["Android (Chrome)", ["Toca el menú <b>⋮</b> arriba a la derecha de Chrome.",
+          "Toca <b>Añadir a pantalla de inicio</b> (en algunos móviles, <b>Instalar aplicación</b>).",
+          "Confirma con <b>Añadir</b>. El icono de Ferritone aparece en la pantalla de inicio."]],
+        ios: ["iPhone y iPad (Safari)", ["Toca <b>Compartir</b> (el cuadrado con una flecha hacia arriba).",
+          "Desplázate y toca <b>Añadir a pantalla de inicio</b>.", "Toca <b>Añadir</b>."]],
+        note: "El acceso funciona en la misma red Wi-Fi mientras Ferritone esté abierto en el equipo. Si la dirección del equipo cambia, por ejemplo al reiniciar el router, escanea el código QR de nuevo y vuelve a crear el acceso." },
+  fr: { heading: "Ferritone sur l’écran d’accueil",
+        lead: "Ajoutez un raccourci qui ouvre la télécommande d’un geste, comme une app. Il garde le code d’accès.",
+        install: "Installer Ferritone",
+        android: ["Android (Chrome)", ["Touchez le menu <b>⋮</b> en haut à droite de Chrome.",
+          "Touchez <b>Ajouter à l’écran d’accueil</b> (sur certains téléphones, <b>Installer l’application</b>).",
+          "Confirmez avec <b>Ajouter</b>. L’icône de Ferritone apparaît sur l’écran d’accueil."]],
+        ios: ["iPhone et iPad (Safari)", ["Touchez <b>Partager</b> (le carré avec une flèche vers le haut).",
+          "Faites défiler et touchez <b>Sur l’écran d’accueil</b>.", "Touchez <b>Ajouter</b>."]],
+        note: "Le raccourci fonctionne sur le même réseau Wi-Fi tant que Ferritone est ouvert sur l’ordinateur. Si l’adresse de l’ordinateur change, par exemple après un redémarrage de la box, scannez à nouveau le code QR et recréez le raccourci." },
+};
+// Browsers that allow it offer a one-tap install; it needs a secure page, so on most home
+// networks the steps below are the way.
+let installPrompt = null;
+window.addEventListener("beforeinstallprompt", event => {
+  event.preventDefault(); installPrompt = event;
+  document.getElementById("install").style.display = "block";
+});
+document.getElementById("install-button").onclick = () => installPrompt && installPrompt.prompt();
+for (const [rel, href] of [["manifest", api("/manifest.webmanifest")], ["apple-touch-icon", api("/icon-192.png")]]) {
+  const link = document.createElement("link"); link.rel = rel; link.href = href; document.head.append(link);
+}
+function renderMobile(language) {
+  const words = mobileText[language] || mobileText.en;
+  document.documentElement.lang = language;
+  document.getElementById("heading").textContent = words.heading;
+  document.getElementById("lead").textContent = words.lead;
+  document.getElementById("install-button").textContent = words.install;
+  document.getElementById("try").textContent = (text[language] || text.en).tryIt;
+  document.getElementById("steps").style.display = "none";
+  const groups = document.getElementById("groups"); groups.replaceChildren();
+  // The steps for this device come first.
+  for (const [title, steps] of apple ? [words.ios, words.android] : [words.android, words.ios]) {
+    const heading = document.createElement("h2"); heading.textContent = title;
+    const list = document.createElement("ol");
+    for (const step of steps) { const li = document.createElement("li"); li.innerHTML = step; list.append(li); }
+    groups.append(heading, list);
+  }
+  const note = document.createElement("p"); note.className = "note"; note.textContent = words.note;
+  groups.append(note);
+}
 const text = {
   en: {
     heading: "Open Ferritone by typing “ferritone”",
@@ -186,8 +266,10 @@ function applyPalette(palette) {
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = palette.background;
 }
-fetch("/api/state").then(r => r.json()).then(state => { applyPalette(state.palette); render(state.language); })
-  .catch(() => render("en"));
+document.getElementById("try").href = api("/");
+const draw = language => (mobile ? renderMobile : render)(language);
+fetch(api("/api/state")).then(r => r.json()).then(state => { applyPalette(state.palette); draw(state.language); })
+  .catch(() => draw("en"));
 </script>
 </body>
 </html>

@@ -27,9 +27,30 @@ impl Player {
             lan,
         )?;
         self.remote.replace(Some(server));
+        self.render_remote_icons();
         self.remote_library_signature.replace(None);
         self.sync_remote(true);
         Ok(())
+    }
+
+    /// Renders the app icon as PNG for home screen shortcuts, once.
+    fn render_remote_icons(&self) {
+        let Ok(mut icons) = self.remote_shared.icons.lock() else {
+            return;
+        };
+        if icons.is_some() {
+            return;
+        }
+        let path = format!("/io/github/ghsantosalves/Ferritone/icons/scalable/apps/{APP_ID}.svg");
+        let png = |size| {
+            gtk::gdk_pixbuf::Pixbuf::from_resource_at_scale(&path, size, size, true)
+                .ok()?
+                .save_to_bufferv("png", &[])
+                .ok()
+        };
+        if let (Some(small), Some(large)) = (png(192), png(512)) {
+            *icons = Some((small, large));
+        }
     }
 
     /// Opens the server to the phone. On failure it stays available on this computer.

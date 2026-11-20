@@ -133,6 +133,8 @@ pub struct Shared {
     /// behind a queue that just changed.
     pub current_path: Mutex<Option<PathBuf>>,
     pub library: Mutex<LibraryList>,
+    /// The app icon as PNG at 192 and 512 pixels, for home screen shortcuts.
+    pub icons: Mutex<Option<(Vec<u8>, Vec<u8>)>>,
 }
 
 pub enum Body {
@@ -343,6 +345,59 @@ pub fn respond(
     match (request.method, path) {
         ("GET", "/") => Response::new("200 OK", "text/html; charset=utf-8", PAGE),
         ("GET", "/setup") => Response::new("200 OK", "text/html; charset=utf-8", SETUP_PAGE),
+        // Lets phones add the page to the home screen with Ferritone's name and icon. The
+        // shortcut keeps the token, so it opens straight into the player.
+        ("GET", "/manifest.webmanifest") => {
+            let suffix = if request.local {
+                String::new()
+            } else {
+                format!("?t={token}")
+            };
+            let background = shared
+                .snapshot
+                .lock()
+                .map(|snapshot| snapshot.palette.background.clone())
+                .unwrap_or_default();
+            let background = if background.is_empty() {
+                "#1e1d1b".to_owned()
+            } else {
+                background
+            };
+            let manifest = serde_json::json!({
+                "name": "Ferritone",
+                "short_name": "Ferritone",
+                "start_url": format!("/{suffix}"),
+                "scope": "/",
+                "display": "standalone",
+                "background_color": background,
+                "theme_color": background,
+                "icons": [
+                    {"src": format!("/icon-192.png{suffix}"), "sizes": "192x192", "type": "image/png"},
+                    {"src": format!("/icon-512.png{suffix}"), "sizes": "512x512", "type": "image/png"},
+                ],
+            });
+            Response::new("200 OK", "application/manifest+json", manifest.to_string())
+        }
+        ("GET", "/icon-192.png" | "/icon-512.png") => {
+            let icon = shared.icons.lock().ok().and_then(|icons| {
+                let (small, large) = icons.as_ref()?;
+                Some(
+                    if path == "/icon-192.png" {
+                        small
+                    } else {
+                        large
+                    }
+                    .clone(),
+                )
+            });
+            match icon {
+                Some(png) => Response {
+                    cacheable: true,
+                    ..Response::new("200 OK", "image/png", png)
+                },
+                None => Response::text("404 Not Found", "No icon"),
+            }
+        }
         ("GET", "/api/state") => match shared.snapshot.lock() {
             Ok(snapshot) => Response::json(&*snapshot),
             Err(_) => Response::text("500 Internal Server Error", "Unavailable"),

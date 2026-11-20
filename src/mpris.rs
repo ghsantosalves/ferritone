@@ -18,6 +18,8 @@ use crate::{
 const BUS_NAME: &str = "org.mpris.MediaPlayer2.Ferritone";
 const PATH: &str = "/org/mpris/MediaPlayer2";
 const PLAYER: &str = "org.mpris.MediaPlayer2.Player";
+/// Ferritone's own interface, so the dock extension can match the app's theme.
+const APPEARANCE: &str = "io.github.ghsantosalves.Ferritone.Appearance";
 const NO_TRACK: &str = "/org/mpris/MediaPlayer2/TrackList/NoTrack";
 type Properties = BTreeMap<&'static str, glib::Variant>;
 
@@ -65,6 +67,9 @@ const INTERFACES: &str = r#"<node>
     <property name="CanSeek" type="b" access="read"/>
     <property name="CanControl" type="b" access="read"/>
   </interface>
+  <interface name="io.github.ghsantosalves.Ferritone.Appearance">
+    <property name="Palette" type="a{ss}" access="read"/>
+  </interface>
 </node>"#;
 
 #[derive(Default)]
@@ -97,6 +102,24 @@ pub struct MediaSession {
     name: Option<gio::OwnerId>,
     properties: RefCell<Properties>,
     artwork: RefCell<Artwork>,
+    palette: RefCell<BTreeMap<String, String>>,
+}
+
+/// The theme colors as the dock extension reads them.
+fn palette_map(palette: &crate::remote::Palette) -> BTreeMap<String, String> {
+    [
+        ("background", &palette.background),
+        ("surface", &palette.surface),
+        ("text", &palette.text),
+        ("muted", &palette.muted),
+        ("line", &palette.line),
+        ("accent", &palette.accent),
+        ("accentText", &palette.accent_text),
+    ]
+    .into_iter()
+    .map(|(key, value)| (key.to_owned(), value.clone()))
+    .chain([("dark".to_owned(), palette.dark.to_string())])
+    .collect()
 }
 
 impl MediaSession {
@@ -109,6 +132,7 @@ impl MediaSession {
             name: None,
             properties: RefCell::default(),
             artwork: RefCell::default(),
+            palette: RefCell::new(palette_map(&player.palette())),
         };
         let base = description.lookup_interface("org.mpris.MediaPlayer2")?;
         let weak = Rc::downgrade(player);
@@ -180,6 +204,31 @@ impl MediaSession {
                 .build()
                 .ok()?,
         );
+        let appearance = description.lookup_interface(APPEARANCE)?;
+        let read_player = Rc::downgrade(player);
+        session.registrations.push(
+            session
+                .connection
+                .register_object(PATH, &appearance)
+                .property(move |_, _, _, _, _| {
+                    read_player
+                        .upgrade()
+                        .and_then(|player| {
+                            Some(
+                                player
+                                    .media_session
+                                    .borrow()
+                                    .as_ref()?
+                                    .palette
+                                    .borrow()
+                                    .to_variant(),
+                            )
+                        })
+                        .unwrap_or_else(|| BTreeMap::<String, String>::new().to_variant())
+                })
+                .build()
+                .ok()?,
+        );
         session.publish(player);
         session.name = Some(gio::bus_own_name_on_connection(
             &session.connection,
@@ -192,6 +241,19 @@ impl MediaSession {
     }
 
     pub fn publish(&self, player: &Player) {
+        let palette = palette_map(&player.palette());
+        if *self.palette.borrow() != palette {
+            let changed: BTreeMap<&str, glib::Variant> =
+                BTreeMap::from([("Palette", palette.to_variant())]);
+            self.palette.replace(palette);
+            let _ = self.connection.emit_signal(
+                None,
+                PATH,
+                "org.freedesktop.DBus.Properties",
+                "PropertiesChanged",
+                Some(&(APPEARANCE, changed, Vec::<String>::new()).to_variant()),
+            );
+        }
         let mut artwork = self.artwork.borrow_mut();
         artwork.update(player.cover.borrow().clone());
         let art_url = artwork

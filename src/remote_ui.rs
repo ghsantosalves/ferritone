@@ -234,9 +234,18 @@ impl Player {
             .filter(|duration| *duration > 0)
             .or_else(|| metadata.and_then(|info| info.duration_ms))
             .unwrap_or(0);
+        if let Ok(mut current) = self.remote_shared.current_path.lock() {
+            if current.as_ref() != track {
+                *current = track.cloned();
+            }
+        }
+        let palette = self.palette();
         let Ok(mut snapshot) = self.remote_shared.snapshot.lock() else {
             return;
         };
+        if snapshot.palette != palette {
+            snapshot.palette = palette;
+        }
         snapshot.language = match state.language.resolve() {
             Language::Portuguese => "pt",
             Language::Spanish => "es",

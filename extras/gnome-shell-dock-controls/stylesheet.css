@@ -51,3 +51,16 @@
 .ferritone-dock-controls-play:hover {
   background-color: #f29a5c;
 }
+
+/* Ferritone sets the colors of the light themes; hover shades darken instead of lighten. */
+.ferritone-dock-controls.light {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+
+.ferritone-dock-controls.light .ferritone-dock-controls-button:hover {
+  background-color: rgba(0, 0, 0, 0.08);
+}
+
+.ferritone-dock-controls.light .ferritone-dock-controls-button:active {
+  background-color: rgba(0, 0, 0, 0.14);
+}

@@ -25,7 +25,7 @@ On other distributions, download the `.flatpak` file from the same release and i
 - **Track tables** sort when you click a column header. In the queue and playlists, the next click reverses the sort and the third restores the original order. Sorting these views keeps the playback sequence. Drag a header to move the column or drag its divider to resize it. Double-click a divider to fit the column to the tracks in the current list.
 - The **playback menu** opens the mini player, the 10-band equalizer with presets, and View settings. Use the mini player's three-dot menu to show album art, live waveforms, and lyrics independently. Ferritone saves the combination and waveform style. The line uses rounded curves. Bars and the mirrored wave respond to the average energy of the audio and recede gradually between beats. The visualizations settle when playback is paused. The main progress slider hides when space is limited. The time display stays visible if enabled.
 - **View** lets you search its options and controls the visibility of interface elements, including the sidebar, title bar icon, playlist buttons, and drop area. Playlist controls can be hidden in the overview and in individual playlists. When the overview drop area is hidden, you can still drop files onto the list to create or add to a playlist. Drag the top edge of the playback bar to resize its height or drag the divider next to the track information to resize its width.
-- **Preferences** lets you change the theme, accent color, and language. The default theme uses charcoal and copper. Ferritone follows the system language by default and includes English, Brazilian Portuguese, Spanish, and French. Other locales fall back to English.
+- **Preferences** lets you change the theme, accent color, and language. With the **System** theme or accent, Ferritone follows the desktop's light or dark style and accent color, including when they change while it is open, inside or outside Flatpak. The phone remote page uses the same colors. The default theme uses charcoal and copper. Ferritone follows the system language by default and includes English, Brazilian Portuguese, Spanish, and French. Other locales fall back to English.
 
 Ferritone currently plays local audio. Direct playback from a web URL is not implemented. File format support depends on the installed GStreamer plugins.
 
@@ -92,7 +92,7 @@ mkdir -p ~/.local/share/gnome-shell/extensions/$uuid
 cp extras/gnome-shell-dock-controls/* ~/.local/share/gnome-shell/extensions/$uuid/
 ```
 
-Log out and back in, then run `gnome-extensions enable $uuid`.
+Log out and back in, then run `gnome-extensions enable $uuid`. The controls use Ferritone's theme and accent color and follow them when you change them in **Preferences**. After updating the extension, log out and back in again so GNOME Shell loads the new version.
 
 While music plays, Ferritone keeps the screen from locking and the computer from sleeping; turn off **Keep the computer awake while playing** in **Preferences → Audio** to allow it.
 

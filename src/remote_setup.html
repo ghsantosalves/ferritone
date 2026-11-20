@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
+<meta name="theme-color" content="#1e1d1b">
 <title>Ferritone · Browser shortcut</title>
 <style>
   :root { --bg: #1e1d1b; --surface: #2a2926; --raised: #34332f; --text: #f2efe9; --muted: #a8a39a;
@@ -169,7 +170,24 @@ function render(language) {
     });
   }
 }
-fetch("/api/state").then(r => r.json()).then(state => render(state.language)).catch(() => render("en"));
+// Follows the theme and accent chosen in Ferritone's preferences.
+let paletteKey = "";
+function applyPalette(palette) {
+  if (!palette || !palette.background) return;
+  const key = JSON.stringify(palette);
+  if (key === paletteKey) return;
+  paletteKey = key;
+  const root = document.documentElement.style;
+  for (const [name, value] of Object.entries({
+    bg: palette.background, surface: palette.surface, raised: palette.raised, text: palette.text,
+    muted: palette.muted, line: palette.line, accent: palette.accent, "accent-text": palette.accent_text,
+  })) root.setProperty("--" + name, value);
+  document.documentElement.style.colorScheme = palette.dark ? "dark" : "light";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = palette.background;
+}
+fetch("/api/state").then(r => r.json()).then(state => { applyPalette(state.palette); render(state.language); })
+  .catch(() => render("en"));
 </script>
 </body>
 </html>

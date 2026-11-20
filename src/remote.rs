@@ -85,10 +85,25 @@ pub struct PlaylistEntry {
     pub tracks: usize,
 }
 
+/// The colors of Ferritone's theme and accent, so the pages look like the app.
+#[derive(Clone, Default, PartialEq, Serialize)]
+pub struct Palette {
+    pub dark: bool,
+    pub background: String,
+    pub surface: String,
+    pub raised: String,
+    pub text: String,
+    pub muted: String,
+    pub line: String,
+    pub accent: String,
+    pub accent_text: String,
+}
+
 /// What the phone shows; the GTK thread keeps it current.
 #[derive(Clone, Default, Serialize)]
 pub struct Snapshot {
     pub language: String,
+    pub palette: Palette,
     pub title: String,
     pub artist: String,
     pub album: String,
@@ -111,6 +126,9 @@ pub struct Shared {
     pub snapshot: Mutex<Snapshot>,
     /// The files behind `Snapshot::queue`, for streaming to the phone.
     pub queue_paths: Mutex<Vec<PathBuf>>,
+    /// The computer's current track, kept current on every poll so its cover never lags
+    /// behind a queue that just changed.
+    pub current_path: Mutex<Option<PathBuf>>,
     pub library: Mutex<LibraryList>,
 }
 
@@ -162,6 +180,9 @@ fn param<'a>(query: &'a str, name: &str) -> Option<&'a str> {
 
 /// The file a request points at: a queue or library entry by index, never a path from the phone.
 fn requested_file(query: &str, shared: &Shared) -> Option<PathBuf> {
+    if param(query, "src")? == "current" {
+        return shared.current_path.lock().ok()?.clone();
+    }
     let index: usize = param(query, "i")?.parse().ok()?;
     match param(query, "src")? {
         "queue" => shared.queue_paths.lock().ok()?.get(index).cloned(),

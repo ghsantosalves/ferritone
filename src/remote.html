@@ -254,7 +254,9 @@ function setOutput(next) {
 // --- Drawing --------------------------------------------------------------------------
 function coverUrl() {
   if (output === "phone") return api("/api/cover?src=" + local.src + "&i=" + local.index);
-  return api("/api/cover?src=queue&i=" + (state.current ?? -1));
+  // Asking for the current track, not a queue position, keeps the cover right right after the
+  // computer switches to another album.
+  return api("/api/cover?src=current&k=" + encodeURIComponent(state.title + "\u0001" + state.album + "\u0001" + state.current));
 }
 function row(number, title, sub, current, onclick) {
   const li = document.createElement("li");
@@ -337,8 +339,25 @@ function renderTransport() {
   $("duration").textContent = time(duration);
   if (!changingVolume) $("volume").value = Math.round((phone ? audio.volume : state.volume) * 100);
 }
+// Follows the theme and accent chosen in Ferritone's preferences.
+let paletteKey = "";
+function applyPalette(palette) {
+  if (!palette || !palette.background) return;
+  const key = JSON.stringify(palette);
+  if (key === paletteKey) return;
+  paletteKey = key;
+  const root = document.documentElement.style;
+  for (const [name, value] of Object.entries({
+    bg: palette.background, surface: palette.surface, raised: palette.raised, text: palette.text,
+    muted: palette.muted, line: palette.line, accent: palette.accent, "accent-text": palette.accent_text,
+  })) root.setProperty("--" + name, value);
+  document.documentElement.style.colorScheme = palette.dark ? "dark" : "light";
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = palette.background;
+}
 function render() {
   if (!state) return;
+  applyPalette(state.palette);
   w = words[state.language] || words.en;
   document.documentElement.lang = state.language || "en";
   $("play-on").textContent = w.playOn;
@@ -364,7 +383,7 @@ function render() {
   $("shuffle").classList.toggle("on", state.shuffle);
   $("repeat").classList.toggle("on", state.repeat !== "off");
   $("repeat-one").textContent = state.repeat === "track" ? "1" : "";
-  const key = phone ? local.src + local.index : "q" + state.current + state.title;
+  const key = phone ? local.src + local.index : [state.current, state.title, state.album].join("\u0001");
   if (key !== coverKey) {
     coverKey = key;
     const img = $("cover");

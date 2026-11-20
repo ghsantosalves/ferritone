@@ -682,46 +682,90 @@ impl Player {
         self.save();
     }
 
-    pub(crate) fn apply_theme(&self) {
-        let state = self.state.borrow();
-        if let Some(settings) = gtk::Settings::default() {
-            settings.set_gtk_application_prefer_dark_theme(match state.theme {
-                Theme::System => match self
-                    .desktop_appearance
-                    .as_ref()
-                    .map(|appearance| appearance.string("color-scheme"))
-                    .as_deref()
-                {
-                    Some("prefer-dark") => true,
-                    Some("prefer-light") => false,
-                    _ => self.default_dark,
-                },
-                Theme::Light => false,
-                Theme::Ferritone | Theme::Dark => true,
-            });
+    /// Whether the chosen theme is dark, resolving "System" from the desktop setting.
+    pub(crate) fn theme_is_dark(&self) -> bool {
+        match self.state.borrow().theme {
+            Theme::System => match self.desktop_color_scheme().as_deref() {
+                Some("prefer-dark") => true,
+                Some("prefer-light") => false,
+                _ => self.default_dark,
+            },
+            Theme::Light => false,
+            Theme::Ferritone | Theme::Dark => true,
         }
-        let desktop_accent = self
-            .desktop_appearance
-            .as_ref()
-            .filter(|settings| {
-                settings
-                    .settings_schema()
-                    .is_some_and(|schema| schema.has_key("accent-color"))
-            })
-            .map(|settings| settings.string("accent-color"));
-        let accent = state.accent.color(desktop_accent.as_deref());
+    }
+
+    /// The accent color and the text color that reads on it.
+    pub(crate) fn accent_colors(&self) -> (&'static str, &'static str) {
+        let accent = self
+            .state
+            .borrow()
+            .accent
+            .color(self.desktop_accent().as_deref());
         let foreground = match accent {
             "@theme_selected_bg_color" => "@theme_selected_fg_color",
             "#9141ac" => "#ffffff",
             _ => "#090b09",
         };
-        let (background, text) = if matches!(state.theme, Theme::Ferritone) {
-            self.window.add_css_class("ferritone");
+        (accent, foreground)
+    }
+
+    /// Concrete colors for pages outside GTK, such as the phone remote, matching the theme.
+    pub(crate) fn palette(&self) -> remote::Palette {
+        let (accent, accent_text) = match self.accent_colors() {
+            // Adwaita's default blue stands in for the theme's own selection color.
+            ("@theme_selected_bg_color", _) => ("#3584e4", "#ffffff"),
+            colors => colors,
+        };
+        let dark = self.theme_is_dark();
+        let [background, surface, raised, text, muted, line] =
+            if matches!(self.state.borrow().theme, Theme::Ferritone) {
+                [
+                    "#1e1d1b", "#2a2926", "#34332f", "#f5f3ef", "#a8a39a", "#3d3b37",
+                ]
+            } else if dark {
+                [
+                    "#242424", "#2e2e2e", "#383838", "#ffffff", "#a0a0a0", "#454545",
+                ]
+            } else {
+                [
+                    "#fafafa", "#ebebeb", "#dedede", "#2e2e2e", "#6f6f6f", "#d4d4d4",
+                ]
+            };
+        remote::Palette {
+            dark,
+            background: background.into(),
+            surface: surface.into(),
+            raised: raised.into(),
+            text: text.into(),
+            muted: muted.into(),
+            line: line.into(),
+            accent: accent.into(),
+            accent_text: accent_text.into(),
+        }
+    }
+
+    pub(crate) fn apply_theme(&self) {
+        if let Some(settings) = gtk::Settings::default() {
+            settings.set_gtk_application_prefer_dark_theme(self.theme_is_dark());
+        }
+        let (accent, foreground) = self.accent_colors();
+        let ferritone = matches!(self.state.borrow().theme, Theme::Ferritone);
+        let (background, text) = if ferritone {
             ("#1e1d1b", "#f5f3ef")
         } else {
-            self.window.remove_css_class("ferritone");
             ("@theme_bg_color", "@theme_fg_color")
         };
+        // Every window, including the mini player, follows the theme as it changes.
+        for window in gtk::Window::list_toplevels() {
+            if let Ok(window) = window.downcast::<gtk::Window>() {
+                if ferritone {
+                    window.add_css_class("ferritone");
+                } else {
+                    window.remove_css_class("ferritone");
+                }
+            }
+        }
         self.css.load_from_data(
             &include_str!("style.css")
                 .replace("PLAYER_BACKGROUND", background)

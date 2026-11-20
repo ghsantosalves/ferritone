@@ -1,5 +1,6 @@
 mod album_pages;
 mod albums;
+mod appearance;
 mod browser_shortcut;
 mod equalizer;
 mod files;
@@ -147,6 +148,11 @@ struct Player {
     css: gtk::CssProvider,
     default_dark: bool,
     desktop_appearance: Option<gio::Settings>,
+    /// The desktop's color scheme and accent as the settings portal last reported them.
+    portal_color_scheme: Cell<Option<u32>>,
+    portal_accent: Cell<Option<&'static str>>,
+    /// Keeps the portal signal subscription alive.
+    desktop_connection: RefCell<Option<gio::DBusConnection>>,
     toggle: gtk::Button,
     progress: gtk::Scale,
     time: gtk::Label,
@@ -427,6 +433,9 @@ fn build(app: &gtk::Application) {
         css,
         default_dark,
         desktop_appearance,
+        portal_color_scheme: Cell::new(None),
+        portal_accent: Cell::new(None),
+        desktop_connection: RefCell::new(None),
         toggle,
         progress,
         time,
@@ -523,6 +532,7 @@ fn build(app: &gtk::Application) {
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
     }
+    player.watch_desktop_appearance();
     player.apply_theme();
     player.apply_view();
     player.accept_files(&player.navigation, Import::PickPlaylist);

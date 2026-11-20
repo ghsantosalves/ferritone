@@ -16,6 +16,8 @@ const APP_ID = 'io.github.ghsantosalves.Ferritone.desktop';
 const BUS_NAME = 'org.mpris.MediaPlayer2.Ferritone';
 const OBJECT_PATH = '/org/mpris/MediaPlayer2';
 const PLAYER_IFACE = 'org.mpris.MediaPlayer2.Player';
+// Ferritone publishes its theme colors here, so the controls match the app.
+const APPEARANCE_IFACE = 'io.github.ghsantosalves.Ferritone.Appearance';
 const SHOW_DELAY_MS = 300;
 const HIDE_DELAY_MS = 300;
 const GAP = 8;
@@ -24,8 +26,10 @@ const MAX_ANCESTORS = 8;
 const STRINGS = {
     en: {previous: 'Previous track', play: 'Play', pause: 'Pause', next: 'Next track'},
     pt: {previous: 'Faixa anterior', play: 'Tocar', pause: 'Pausar', next: 'Próxima faixa'},
+    es: {previous: 'Pista anterior', play: 'Reproducir', pause: 'Pausar', next: 'Pista siguiente'},
+    fr: {previous: 'Piste précédente', play: 'Lire', pause: 'Pause', next: 'Piste suivante'},
 };
-const tr = STRINGS[GLib.get_language_names()[0].startsWith('pt') ? 'pt' : 'en'];
+const tr = STRINGS[GLib.get_language_names()[0].slice(0, 2)] ?? STRINGS.en;
 
 function isFerritoneDockIcon(actor) {
     if (actor?.app?.get_id?.() !== APP_ID)
@@ -44,10 +48,13 @@ export default class FerritoneDockControls extends Extension {
         this._hideId = 0;
         this._proxy = null;
         this._proxySignals = [];
+        this._appearance = null;
+        this._appearanceSignals = [];
         this._cancellable = new Gio.Cancellable();
 
         this._buildPopup();
         this._connectPlayer();
+        this._connectAppearance();
         this._stageId = global.stage.connect('captured-event',
             (_stage, event) => this._onCapturedEvent(event));
     }
@@ -62,10 +69,13 @@ export default class FerritoneDockControls extends Extension {
         this._icons.clear();
         if (this._proxy)
             this._proxySignals.forEach(id => this._proxy.disconnect(id));
+        if (this._appearance)
+            this._appearanceSignals.forEach(id => this._appearance.disconnect(id));
         Main.layoutManager.removeChrome(this._popup);
         this._popup.destroy();
-        this._popup = this._proxy = this._activeIcon = this._lastEventActor = null;
+        this._popup = this._proxy = this._appearance = this._activeIcon = this._lastEventActor = null;
         this._proxySignals = [];
+        this._appearanceSignals = [];
     }
 
     _buildPopup() {
@@ -128,6 +138,47 @@ export default class FerritoneDockControls extends Extension {
                     }),
                 ];
             });
+    }
+
+    _connectAppearance() {
+        Gio.DBusProxy.new_for_bus(
+            Gio.BusType.SESSION, Gio.DBusProxyFlags.DO_NOT_AUTO_START, null,
+            BUS_NAME, OBJECT_PATH, APPEARANCE_IFACE, this._cancellable,
+            (_source, result) => {
+                try {
+                    this._appearance = Gio.DBusProxy.new_for_bus_finish(result);
+                } catch (e) {
+                    if (!e.matches(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
+                        console.error(`Ferritone dock controls: ${e.message}`);
+                    return;
+                }
+                this._appearanceSignals = [
+                    this._appearance.connect('g-properties-changed', () => this._applyPalette()),
+                    this._appearance.connect('notify::g-name-owner', () => this._applyPalette()),
+                ];
+                this._applyPalette();
+            });
+    }
+
+    // Colors the controls with Ferritone's theme and accent; older versions keep the defaults.
+    _applyPalette() {
+        const palette = this._appearance?.get_cached_property('Palette')?.deepUnpack();
+        const valid = palette && /^#[0-9a-f]{3,8}$/i.test(palette.background ?? '');
+        const color = key => valid && /^#[0-9a-f]{3,8}$/i.test(palette[key] ?? '') ? palette[key] : null;
+        const style = rules => Object.entries(rules)
+            .filter(([, value]) => value)
+            .map(([name, value]) => `${name}: ${value};`)
+            .join(' ');
+        this._popup.set_style(style({'background-color': color('background'), 'border-color': color('line')}));
+        this._title.set_style(style({color: color('text')}));
+        this._artist.set_style(style({color: color('muted')}));
+        for (const button of [this._previous, this._next])
+            button.set_style(style({color: color('text')}));
+        this._playPause.set_style(style({'background-color': color('accent'), color: color('accentText')}));
+        if (valid && palette.dark === 'false')
+            this._popup.add_style_class_name('light');
+        else
+            this._popup.remove_style_class_name('light');
     }
 
     _call(method) {

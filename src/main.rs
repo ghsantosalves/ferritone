@@ -105,6 +105,9 @@ struct Player {
     saved_playlist_query: RefCell<String>,
     playlist_menu_delete: gtk::Button,
     status: gtk::Label,
+    /// The status message with its close button.
+    status_bar: gtk::Box,
+    status_timer: Rc<RefCell<Option<glib::SourceId>>>,
     now_playing: gtk::Label,
     playing_artist: gtk::Label,
     track_caption: gtk::Box,
@@ -315,7 +318,21 @@ fn build(app: &gtk::Application) {
     status.set_xalign(0.0);
     status.set_wrap(true);
     status.add_css_class("status");
-    status.set_visible(false);
+    status.set_hexpand(true);
+    let status_bar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    status_bar.add_css_class("status-bar");
+    status_bar.set_visible(false);
+    status_bar.append(&status);
+    let close_status = gtk::Button::from_icon_name("window-close-symbolic");
+    close_status.add_css_class("flat");
+    close_status.set_valign(gtk::Align::Center);
+    let bar = status_bar.downgrade();
+    close_status.connect_clicked(move |_| {
+        if let Some(bar) = bar.upgrade() {
+            bar.set_visible(false);
+        }
+    });
+    status_bar.append(&close_status);
 
     let now_playing = gtk::Label::new(None);
     now_playing.add_css_class("playing-title");
@@ -415,6 +432,8 @@ fn build(app: &gtk::Application) {
         saved_playlist_query: RefCell::new(String::new()),
         playlist_menu_delete: gtk::Button::new(),
         status,
+        status_bar,
+        status_timer: Rc::default(),
         now_playing,
         playing_artist,
         track_caption,
@@ -507,7 +526,7 @@ fn build(app: &gtk::Application) {
     let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
     body.set_hexpand(true);
     body.set_vexpand(true);
-    body.append(&player.status);
+    body.append(&player.status_bar);
     body.append(&player.content);
     top.set_vexpand(true);
     top.append(&player.sidebar);
@@ -1138,9 +1157,33 @@ impl Player {
             .text(english, portuguese)
     }
 
+    /// Shows a message above the page. It can be closed and goes away on its own after a while.
     fn message(&self, message: &str) {
         self.status.set_text(message);
-        self.status.set_visible(!message.is_empty());
+        self.status_bar.set_visible(!message.is_empty());
+        if let Some(timer) = self.status_timer.take() {
+            timer.remove();
+        }
+        if message.is_empty() {
+            return;
+        }
+        // Long messages stay a little longer so there is time to read them.
+        let seconds = 6 + message.chars().count() as u64 / 25;
+        let bar = self.status_bar.downgrade();
+        let shown = message.to_owned();
+        let label = self.status.downgrade();
+        let pending = self.status_timer.clone();
+        let timer = glib::timeout_add_local_once(Duration::from_secs(seconds), move || {
+            // The source is gone once it has run, so it must not be removed again.
+            pending.take();
+            let (Some(bar), Some(label)) = (bar.upgrade(), label.upgrade()) else {
+                return;
+            };
+            if label.text() == shown {
+                bar.set_visible(false);
+            }
+        });
+        self.status_timer.replace(Some(timer));
     }
 
     fn save(&self) {

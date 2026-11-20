@@ -408,7 +408,7 @@ fn titles_match(online: &str, local: &str) -> bool {
             && fold_search_name(&core_title(online)) == fold_search_name(&core_title(local)))
 }
 
-fn artists_match(online: &str, local: &str) -> bool {
+pub(crate) fn artists_match(online: &str, local: &str) -> bool {
     if fold_search_name(online) == fold_search_name(local) {
         return true;
     }
@@ -459,7 +459,7 @@ pub fn fill_from_path(
     info
 }
 
-fn fold_search_name(text: &str) -> String {
+pub(crate) fn fold_search_name(text: &str) -> String {
     crate::search::search_key(text)
         .chars()
         .filter(|character| character.is_alphanumeric())

@@ -190,6 +190,11 @@ struct Player {
     /// When the current track started, for ListenBrainz.
     track_started_at: Cell<u64>,
     listens_sending: Cell<bool>,
+    /// Whether the ListenBrainz token works, and for which user.
+    listenbrainz_state: RefCell<scrobble::Connection>,
+    /// Listens ListenBrainz accepted since Ferritone started.
+    listens_sent: Cell<usize>,
+    listenbrainz_status: RefCell<Option<glib::WeakRef<gtk::Label>>>,
     /// Watches the library folders for added and removed files.
     library_monitors: RefCell<Vec<gio::FileMonitor>>,
     selected_album: RefCell<albums::AlbumKey>,
@@ -203,7 +208,24 @@ struct Player {
     applied_volume: Cell<f64>,
 }
 
+/// Whether the saved preferences ask for GPU drawing. Read before GTK starts, since the
+/// renderer cannot change afterwards.
+fn wants_gpu_rendering() -> bool {
+    std::fs::read(data_path())
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .and_then(|library| library.get("gpu_rendering")?.as_bool())
+        .unwrap_or(false)
+}
+
 fn main() -> glib::ExitCode {
+    // GTK's GPU renderers keep around 40-150 MB of driver and texture memory, while drawing a
+    // music player's interface in software costs about the same CPU. Software is the default
+    // unless the user asks for the GPU in Preferences or sets GSK_RENDERER themselves.
+    if std::env::var_os("GSK_RENDERER").is_none() && !wants_gpu_rendering() {
+        // SAFETY: this runs first in main, before GTK, GStreamer, or any other thread starts.
+        unsafe { std::env::set_var("GSK_RENDERER", "cairo") };
+    }
     glib::set_application_name(APP_NAME);
     glib::set_prgname(Some(APP_ID));
     if let Err(error) = gst::init() {
@@ -468,6 +490,9 @@ fn build(app: &gtk::Application) {
         play_counted: Cell::new(false),
         track_started_at: Cell::new(0),
         listens_sending: Cell::new(false),
+        listenbrainz_state: RefCell::new(scrobble::Connection::Off),
+        listens_sent: Cell::new(0),
+        listenbrainz_status: RefCell::new(None),
         library_monitors: RefCell::default(),
         selected_album: RefCell::default(),
         selected_artist: RefCell::default(),

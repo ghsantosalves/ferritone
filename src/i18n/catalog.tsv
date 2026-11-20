@@ -251,3 +251,14 @@ The remote control could not start.	No se pudo iniciar el control remoto.	Imposs
 Keep the screen from locking while playing	No dejar que la pantalla se bloquee durante la reproducción	Empêcher l’écran de se verrouiller pendant la lecture
 Keep the computer from sleeping while playing	No dejar que el equipo se suspenda durante la reproducción	Empêcher l’ordinateur de se mettre en veille pendant la lecture
 Suspending would stop the music	La suspensión detendría la música	La mise en veille arrêterait la musique
+Draw the interface with the graphics card	Dibujar la interfaz con la tarjeta gráfica	Dessiner l’interface avec la carte graphique
+Uses about 50 to 150 MB more memory. Takes effect after reopening Ferritone.	Usa entre 50 y 150 MB más de memoria. Se aplica al volver a abrir Ferritone.	Utilise environ 50 à 150 Mo de mémoire en plus. Prend effet à la réouverture de Ferritone.
+Pulsing ring	Anillo pulsante	Anneau pulsant
+LED meter	Medidor de LED	Vumètre à LED
+Aurora	Aurora	Aurore
+Listens sent this session: {sent}. Waiting to send: {pending}.	Escuchas enviadas en esta sesión: {sent}. Pendientes de envío: {pending}.	Écoutes envoyées cette session : {sent}. En attente d’envoi : {pending}.
+Most played on ListenBrainz	Más escuchadas en ListenBrainz	Les plus écoutés sur ListenBrainz
+Looking up your most played tracks on ListenBrainz…	Buscando tus pistas más escuchadas en ListenBrainz…	Recherche de vos pistes les plus écoutées sur ListenBrainz…
+None of your most played tracks on ListenBrainz are in the library yet.	Ninguna de tus pistas más escuchadas en ListenBrainz está todavía en la biblioteca.	Aucune de vos pistes les plus écoutées sur ListenBrainz n’est encore dans la bibliothèque.
+Listens recorded on ListenBrainz: {}.	Escuchas registradas en ListenBrainz: {}.	Écoutes enregistrées sur ListenBrainz : {}.
+ListenBrainz has not calculated your statistics yet. It does so once a day, so try again tomorrow.	ListenBrainz todavía no ha calculado tus estadísticas. Lo hace una vez al día, así que vuelve a intentarlo mañana.	ListenBrainz n’a pas encore calculé vos statistiques. Il le fait une fois par jour, réessayez demain.

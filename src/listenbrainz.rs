@@ -165,6 +165,74 @@ pub fn submit(token: &str, kind: Kind, listens: &[Listen]) -> Result<(), Error> 
     check(status)
 }
 
+/// A track from the user's ListenBrainz statistics.
+#[derive(Debug, PartialEq)]
+pub struct Recording {
+    pub artist: String,
+    pub title: String,
+}
+
+/// Reads a stats reply; `None` when ListenBrainz has not computed stats for that range yet.
+fn parse_recordings(status: u16, body: &str) -> Result<Option<Vec<Recording>>, Error> {
+    match status {
+        204 => return Ok(None),
+        200 => {}
+        401 => return Err(Error::Token),
+        _ => return Err(Error::Unavailable),
+    }
+    let reply: serde_json::Value = serde_json::from_str(body).map_err(|_| Error::Unavailable)?;
+    let recordings = reply["payload"]["recordings"]
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| {
+                    Some(Recording {
+                        artist: item["artist_name"].as_str()?.to_owned(),
+                        title: item["track_name"].as_str()?.to_owned(),
+                    })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    Ok(Some(recordings))
+}
+
+fn encode_user(user: &str) -> String {
+    user.bytes()
+        .map(|byte| {
+            if byte.is_ascii_alphanumeric() || b"-_.~".contains(&byte) {
+                (byte as char).to_string()
+            } else {
+                format!("%{byte:02X}")
+            }
+        })
+        .collect()
+}
+
+/// The user's most played recordings: this month if computed, else this year, else all time.
+/// `None` when ListenBrainz has not computed any statistics for the user yet.
+pub fn top_recordings(token: &str, user: &str) -> Result<Option<Vec<Recording>>, Error> {
+    let user = encode_user(user);
+    for range in ["month", "year", "all_time"] {
+        let url = format!("{API}/stats/user/{user}/recordings?range={range}&count=100");
+        let (status, body) = request(token, &url, None)?;
+        if let Some(recordings) = parse_recordings(status, &body)? {
+            return Ok(Some(recordings));
+        }
+    }
+    Ok(None)
+}
+
+/// How many listens ListenBrainz has recorded for the user.
+pub fn listen_count(token: &str, user: &str) -> Result<u64, Error> {
+    let url = format!("{API}/user/{}/listen-count", encode_user(user));
+    let (status, body) = request(token, &url, None)?;
+    check(status)?;
+    let reply: serde_json::Value = serde_json::from_str(&body).map_err(|_| Error::Unavailable)?;
+    reply["payload"]["count"].as_u64().ok_or(Error::Unavailable)
+}
+
 /// The user name the token belongs to.
 pub fn validate(token: &str) -> Result<String, Error> {
     let (status, body) = request(token, &format!("{API}/validate-token"), None)?;
@@ -275,6 +343,25 @@ mod tests {
                 .any(|header| header == "Content-Type: application/json")
         );
         assert_eq!(received, body);
+    }
+
+    #[test]
+    fn stats_replies_list_recordings_or_report_no_stats_yet() {
+        let body = r#"{"payload":{"recordings":[
+            {"artist_name":"TM Juke","track_name":"Just for a Day (Sunday)","listen_count":243},
+            {"artist_name":"Pretty Lights","listen_count":227}
+        ]}}"#;
+        let recordings = parse_recordings(200, body).unwrap().unwrap();
+        assert_eq!(
+            recordings,
+            [Recording {
+                artist: "TM Juke".into(),
+                title: "Just for a Day (Sunday)".into()
+            }]
+        );
+        assert_eq!(parse_recordings(204, ""), Ok(None));
+        assert_eq!(parse_recordings(401, ""), Err(Error::Token));
+        assert_eq!(parse_recordings(500, ""), Err(Error::Unavailable));
     }
 
     #[test]

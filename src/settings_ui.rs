@@ -687,6 +687,27 @@ impl Player {
             }
         });
         form.append(&awake);
+        let gpu = gtk::CheckButton::with_label(self.text(
+            "Draw the interface with the graphics card",
+            "Desenhar a interface com a placa de vídeo",
+        ));
+        gpu.set_active(self.state.borrow().gpu_rendering);
+        let weak = Rc::downgrade(self);
+        gpu.connect_toggled(move |gpu| {
+            if let Some(player) = weak.upgrade() {
+                player.state.borrow_mut().gpu_rendering = gpu.is_active();
+                player.save();
+            }
+        });
+        form.append(&gpu);
+        let note = gtk::Label::new(Some(self.text(
+            "Uses about 50 to 150 MB more memory. Takes effect after reopening Ferritone.",
+            "Usa cerca de 50 a 150 MB a mais de memória. Vale depois de reabrir o Ferritone.",
+        )));
+        note.set_xalign(0.0);
+        note.set_wrap(true);
+        note.add_css_class("dim-label");
+        form.append(&note);
     }
 
     pub(crate) fn save_replay_gain(&self) {

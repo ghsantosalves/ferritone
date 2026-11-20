@@ -438,3 +438,16 @@ scale:disabled slider { background: mix(@player_bg, @player_fg, 0.3); box-shadow
 .mini-cover, .mini-visual { border-radius: 14px; }
 .mini-layout .playing-title { font-size: 1.12em; }
 .mini-layout .transport { background: transparent; border: 0; padding: 4px 0 0; }
+.mini-header { padding: 0 2px 2px; }
+.mini-thumb { border-radius: 10px; background: mix(@player_bg, @player_fg, 0.08); }
+.mini-waveform { border-radius: 12px; }
+/* Lyrics sit on a soft card, the current line large and the others fading out. */
+.mini-lyric-card {
+    background: mix(@player_bg, @player_fg, 0.045);
+    border-radius: 16px;
+}
+.mini-lyrics { background: transparent; padding: 14px 18px; font-size: 1em; }
+.mini-lyrics .lyric-current { font-size: 1.32em; font-weight: 800; }
+.mini-lyrics .lyric-nearby { opacity: 0.55; }
+.mini-lyrics .lyric-distant { opacity: 0.28; font-size: 0.92em; }
+

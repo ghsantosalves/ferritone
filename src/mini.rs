@@ -82,10 +82,12 @@ pub fn open(player: &Rc<Player>) {
     cover.set_measure_overlay(&picture, false);
     cover.set_clip_overlay(&picture, true);
 
+    // The waveform is a wide, short strip under the cover rather than a square beside it.
     let area = gtk::DrawingArea::new();
     area.set_content_width(90);
-    area.set_content_height(125);
+    area.set_content_height(56);
     area.add_css_class("mini-visual");
+    area.add_css_class("mini-waveform");
     area.update_property(&[gtk::accessible::Property::Label(
         player.text("Audio waveform", "Ondas do áudio"),
     )]);
@@ -107,32 +109,78 @@ pub fn open(player: &Rc<Player>) {
     let frame = Rc::new(Cell::new(WaveformFrame::default()));
     let draw_mode = mode.clone();
     let draw_frame = frame.clone();
+    let draw_player = Rc::downgrade(player);
     area.set_draw_func(move |_, context, width, height| {
+        // The waveform takes the accent color chosen in Preferences.
+        let accent = draw_player
+            .upgrade()
+            .and_then(|player| parse_hex(&player.palette().accent))
+            .unwrap_or((0.96, 0.56, 0.30));
         draw_waveform(
             context,
             f64::from(width),
             f64::from(height),
             &draw_frame.get(),
             draw_mode.get(),
+            accent,
         );
     });
-    let visuals = gtk::Box::new(gtk::Orientation::Vertical, 7);
-    let artwork = gtk::Box::new(gtk::Orientation::Horizontal, 7);
+    let visuals = gtk::Box::new(gtk::Orientation::Vertical, 10);
+    let artwork = gtk::Box::new(gtk::Orientation::Vertical, 10);
     artwork.set_vexpand(true);
-    artwork.set_homogeneous(true);
     // A square frame keeps the cover's area the shape of the cover, so its rounded corners
     // land on the image rather than on the empty space beside it.
     cover.set_size_request(90, 90);
     let cover_frame = gtk::AspectFrame::new(0.5, 0.5, 1.0, false);
     cover_frame.set_child(Some(&cover));
-    cover_frame.set_hexpand(true);
+    cover_frame.set_vexpand(true);
     area.set_hexpand(true);
     artwork.append(&cover_frame);
     artwork.append(&area);
+
+    // With lyrics on screen, the cover shrinks to a thumbnail beside the track so the lyrics
+    // get the room.
+    let compact = gtk::Box::new(gtk::Orientation::Horizontal, 12);
+    compact.add_css_class("mini-header");
+    let thumb = gtk::Picture::new();
+    thumb.set_content_fit(gtk::ContentFit::Cover);
+    thumb.set_can_shrink(true);
+    thumb.set_overflow(gtk::Overflow::Hidden);
+    thumb.add_css_class("mini-thumb");
+    thumb.set_size_request(56, 56);
+    thumb.set_valign(gtk::Align::Center);
+    player
+        .cover_source
+        .bind_property("paintable", &thumb, "paintable")
+        .sync_create()
+        .build();
+    compact.append(&thumb);
+    let compact_info = gtk::Box::new(gtk::Orientation::Vertical, 2);
+    compact_info.set_valign(gtk::Align::Center);
+    compact_info.set_hexpand(true);
+    for (source, style) in [
+        (&player.now_playing, "playing-title"),
+        (&player.playing_artist, "playing-artist"),
+    ] {
+        let label = gtk::Label::new(None);
+        label.set_xalign(0.0);
+        label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+        label.add_css_class(style);
+        source
+            .bind_property("label", &label, "label")
+            .sync_create()
+            .build();
+        compact_info.append(&label);
+    }
+    compact.append(&compact_info);
+    visuals.append(&compact);
     visuals.append(&artwork);
     let lyric_panel = gtk::Stack::new();
     lyric_panel.set_vhomogeneous(true);
     lyric_panel.set_vexpand(true);
+    // The card fills the space; the verses stay centered inside it.
+    lyric_panel.add_css_class("mini-lyric-card");
+    lyric_panel.set_overflow(gtk::Overflow::Hidden);
     let excerpt = gtk::Box::new(gtk::Orientation::Vertical, 6);
     excerpt.add_css_class("mini-lyrics");
     excerpt.set_valign(gtk::Align::Center);
@@ -250,9 +298,22 @@ pub fn open(player: &Rc<Player>) {
             MiniVisual::Mirror,
             player.text("Mirrored waveform", "Onda espelhada"),
         ),
+        (
+            MiniVisual::Ring,
+            player.text("Pulsing ring", "Anel pulsante"),
+        ),
+        (MiniVisual::Dots, player.text("LED meter", "Matriz de LEDs")),
+        (MiniVisual::Aurora, player.text("Aurora", "Aurora")),
     ]
     .map(|(visual, label)| (visual, gtk::CheckButton::with_label(label)));
-    let selected_style = if matches!(saved.waveform_style, MiniVisual::Bars | MiniVisual::Mirror) {
+    let selected_style = if matches!(
+        saved.waveform_style,
+        MiniVisual::Bars
+            | MiniVisual::Mirror
+            | MiniVisual::Ring
+            | MiniVisual::Dots
+            | MiniVisual::Aurora
+    ) {
         saved.waveform_style
     } else {
         MiniVisual::Waveform
@@ -265,6 +326,7 @@ pub fn open(player: &Rc<Player>) {
     }
 
     let update = {
+        let info = info.clone();
         let weak = Rc::downgrade(player);
         let cover_choice = cover_choice.downgrade();
         let waveform_choice = waveform_choice.downgrade();
@@ -299,9 +361,21 @@ pub fn open(player: &Rc<Player>) {
             };
             let show_waveform = display.waveform && waveform_enabled;
             let show_lyrics = display.lyrics && lyrics_enabled;
-            cover_frame.set_visible(display.cover);
+            // Lyrics take the middle: the cover becomes a thumbnail in a header instead.
+            compact.set_visible(show_lyrics);
+            thumb.set_visible(show_lyrics && display.cover);
+            info.set_visible(!show_lyrics);
+            cover_frame.set_visible(display.cover && !show_lyrics);
             area.set_visible(show_waveform);
-            artwork.set_visible(display.cover || show_waveform);
+            area.set_vexpand(show_waveform && !display.cover && !show_lyrics);
+            // The ring needs room to be round; the other styles read well as a strip.
+            area.set_content_height(if mode.get() == MiniVisual::Ring {
+                150
+            } else {
+                56
+            });
+            artwork.set_vexpand(!show_lyrics);
+            artwork.set_visible((display.cover && !show_lyrics) || show_waveform);
             lyric_panel.set_visible(show_lyrics);
             visuals.set_visible(display.cover || show_waveform || show_lyrics);
             styles.set_visible(show_waveform);
@@ -526,11 +600,17 @@ fn draw_waveform(
     height: f64,
     frame: &WaveformFrame,
     mode: MiniVisual,
+    accent: (f64, f64, f64),
 ) {
+    match mode {
+        MiniVisual::Ring => return draw_ring(cr, width, height, frame, accent),
+        MiniVisual::Dots => return draw_dots(cr, width, height, frame, accent),
+        MiniVisual::Aurora => return draw_aurora(cr, width, height, frame, accent),
+        _ => {}
+    }
     let middle = height / 2.0;
     let inset = 14.0;
     let width = (width - 2.0 * inset).max(1.0);
-    let accent = (0.96, 0.56, 0.30);
     cr.set_source_rgba(accent.0, accent.1, accent.2, 0.16);
     cr.set_line_width(1.0);
     cr.move_to(inset, middle);
@@ -593,6 +673,135 @@ fn draw_waveform(
     cr.set_source_rgba(accent.0, accent.1, accent.2, 0.80);
     cr.set_line_width(1.7);
     let _ = cr.stroke();
+}
+
+/// `#rrggbb` as cairo color channels.
+fn parse_hex(color: &str) -> Option<(f64, f64, f64)> {
+    let hex = color.strip_prefix('#').filter(|hex| hex.len() == 6)?;
+    let channel = |range| {
+        u8::from_str_radix(hex.get(range)?, 16)
+            .ok()
+            .map(|v| f64::from(v) / 255.0)
+    };
+    Some((channel(0..2)?, channel(2..4)?, channel(4..6)?))
+}
+
+/// Seconds on a steady clock, for gentle motion between audio frames.
+fn now_seconds() -> f64 {
+    gtk::glib::monotonic_time() as f64 / 1_000_000.0
+}
+
+fn level(energy: f32) -> f64 {
+    (f64::from(energy) * 1.9).tanh()
+}
+
+/// Bars radiating from a ring whose size follows the overall loudness; the ring turns slowly.
+fn draw_ring(
+    cr: &gtk::cairo::Context,
+    width: f64,
+    height: f64,
+    frame: &WaveformFrame,
+    accent: (f64, f64, f64),
+) {
+    let (cx, cy) = (width / 2.0, height / 2.0);
+    let size = width.min(height) / 2.0;
+    let average = frame.energy.iter().map(|e| level(*e)).sum::<f64>() / POINTS as f64;
+    let radius = size * (0.34 + average * 0.10);
+    let turn = now_seconds() * 0.25;
+    cr.set_line_cap(gtk::cairo::LineCap::Round);
+    // Each energy value appears twice, mirrored, so the ring is symmetric.
+    let count = POINTS * 2;
+    for i in 0..count {
+        let energy = frame.energy[if i < POINTS { i } else { count - 1 - i }];
+        let reach = level(energy) * size * 0.52 + 2.0;
+        let angle = turn + i as f64 / count as f64 * std::f64::consts::TAU;
+        let (sin, cos) = angle.sin_cos();
+        cr.set_source_rgba(accent.0, accent.1, accent.2, 0.35 + level(energy) * 0.6);
+        cr.set_line_width((size * 0.06).clamp(1.5, 4.0));
+        cr.move_to(cx + cos * radius, cy + sin * radius);
+        cr.line_to(cx + cos * (radius + reach), cy + sin * (radius + reach));
+        let _ = cr.stroke();
+    }
+    cr.set_source_rgba(accent.0, accent.1, accent.2, 0.18 + average * 0.4);
+    cr.arc(cx, cy, radius * 0.82, 0.0, std::f64::consts::TAU);
+    let _ = cr.fill();
+}
+
+/// Columns of dots lit from the bottom up, with a peak dot in full color.
+fn draw_dots(
+    cr: &gtk::cairo::Context,
+    width: f64,
+    height: f64,
+    frame: &WaveformFrame,
+    accent: (f64, f64, f64),
+) {
+    let columns = POINTS;
+    let rows = ((height / 9.0).floor() as usize).clamp(4, 14);
+    let step_x = width / columns as f64;
+    let step_y = height / rows as f64;
+    let dot = (step_x.min(step_y) * 0.32).max(1.2);
+    for (column, energy) in frame.energy.iter().enumerate() {
+        let lit = (level(*energy) * rows as f64).round() as usize;
+        let x = (column as f64 + 0.5) * step_x;
+        for row in 0..rows {
+            let y = height - (row as f64 + 0.5) * step_y;
+            let alpha = if row + 1 == lit {
+                1.0
+            } else if row < lit {
+                0.35 + 0.45 * row as f64 / rows as f64
+            } else {
+                0.08
+            };
+            cr.set_source_rgba(accent.0, accent.1, accent.2, alpha);
+            cr.arc(x, y, dot, 0.0, std::f64::consts::TAU);
+            let _ = cr.fill();
+        }
+    }
+}
+
+/// Three soft waves, offset in phase and shade, drifting slowly sideways.
+fn draw_aurora(
+    cr: &gtk::cairo::Context,
+    width: f64,
+    height: f64,
+    frame: &WaveformFrame,
+    accent: (f64, f64, f64),
+) {
+    let time = now_seconds();
+    // Lighter and darker shades of the accent for depth.
+    let shade = |amount: f64| {
+        let mix = |c: f64| {
+            if amount >= 0.0 {
+                c + (1.0 - c) * amount
+            } else {
+                c * (1.0 + amount)
+            }
+        };
+        (mix(accent.0), mix(accent.1), mix(accent.2))
+    };
+    for (layer, (tone, alpha, speed)) in [(-0.35, 0.30, 0.6), (0.0, 0.38, 0.9), (0.45, 0.32, 1.3)]
+        .into_iter()
+        .enumerate()
+    {
+        let color = shade(tone);
+        let base = height * (0.42 + layer as f64 * 0.12);
+        let points: [(f64, f64); POINTS] = std::array::from_fn(|i| {
+            let x = width * i as f64 / (POINTS - 1) as f64;
+            let sway = (time * speed + i as f64 * 0.45 + layer as f64 * 1.7).sin() * height * 0.06;
+            let pulse = level(frame.energy[(i + layer * 5) % POINTS]) * height * 0.30;
+            (x, base - pulse - sway)
+        });
+        cr.move_to(points[0].0, points[0].1);
+        trace_curve(cr, points);
+        cr.line_to(width, height);
+        cr.line_to(0.0, height);
+        cr.close_path();
+        let fill = gtk::cairo::LinearGradient::new(0.0, base - height * 0.35, 0.0, height);
+        fill.add_color_stop_rgba(0.0, color.0, color.1, color.2, alpha);
+        fill.add_color_stop_rgba(1.0, color.0, color.1, color.2, 0.0);
+        let _ = cr.set_source(&fill);
+        let _ = cr.fill();
+    }
 }
 
 fn trace_curve(cr: &gtk::cairo::Context, points: impl IntoIterator<Item = (f64, f64)>) {

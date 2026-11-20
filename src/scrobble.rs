@@ -6,6 +6,17 @@ use listenbrainz::{Error, Kind, Listen};
 /// How often listens saved while offline are retried.
 const RETRY_INTERVAL: Duration = Duration::from_secs(10 * 60);
 
+/// What Ferritone knows about the ListenBrainz connection.
+#[derive(Clone, PartialEq)]
+pub enum Connection {
+    Off,
+    Checking,
+    /// The user name and, once known, how many listens ListenBrainz has for them.
+    Connected(String, Option<u64>),
+    InvalidToken,
+    Unreachable,
+}
+
 fn now_seconds() -> u64 {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -107,7 +118,11 @@ impl Player {
                         .borrow_mut()
                         .pending_listens
                         .retain(|listen| !batch.contains(listen));
+                    player
+                        .listens_sent
+                        .set(player.listens_sent.get() + batch.len());
                     player.save();
+                    player.refresh_listenbrainz_status();
                     player.flush_listens();
                 }
                 Err(Error::Token) => player.message(player.text(
@@ -128,7 +143,102 @@ impl Player {
             player.flush_listens();
             glib::ControlFlow::Continue
         });
+        self.verify_listenbrainz();
         self.flush_listens();
+    }
+
+    /// Checks the token in the background and records who it belongs to.
+    pub(crate) fn verify_listenbrainz(self: &Rc<Self>) {
+        let Some(token) = self.listenbrainz_token() else {
+            self.listenbrainz_state.replace(Connection::Off);
+            self.refresh_listenbrainz_status();
+            return;
+        };
+        self.listenbrainz_state.replace(Connection::Checking);
+        self.refresh_listenbrainz_status();
+        let weak = Rc::downgrade(self);
+        glib::spawn_future_local(async move {
+            let result = gio::spawn_blocking(move || {
+                let user = listenbrainz::validate(&token)?;
+                let count = listenbrainz::listen_count(&token, &user).ok();
+                Ok((user, count))
+            })
+            .await
+            .unwrap_or(Err(Error::Unavailable));
+            let Some(player) = weak.upgrade() else { return };
+            player.listenbrainz_state.replace(match result {
+                Ok((user, count)) => Connection::Connected(user, count),
+                Err(Error::Token) => Connection::InvalidToken,
+                Err(Error::Unavailable) => Connection::Unreachable,
+            });
+            player.refresh_listenbrainz_status();
+            // Home lists the ListenBrainz smart list only once the user is known.
+            if player.page.get() == Page::Home {
+                player.show(Page::Home);
+            }
+        });
+    }
+
+    /// Updates the status line in Preferences, if it is on screen.
+    pub(crate) fn refresh_listenbrainz_status(&self) {
+        let Some(label) = self
+            .listenbrainz_status
+            .borrow()
+            .as_ref()
+            .and_then(|label| label.upgrade())
+        else {
+            return;
+        };
+        let pending = self.state.borrow().pending_listens.len();
+        let text = match &*self.listenbrainz_state.borrow() {
+            Connection::Off => String::new(),
+            Connection::Checking => self.text("Checking…", "Verificando…").to_owned(),
+            Connection::Connected(user, count) => {
+                let mut text = self
+                    .text("Connected as {}.", "Conectado como {}.")
+                    .replace("{}", user);
+                if let Some(count) = count {
+                    text.push(' ');
+                    text.push_str(
+                        &self
+                            .text(
+                                "Listens recorded on ListenBrainz: {}.",
+                                "Escutas registradas no ListenBrainz: {}.",
+                            )
+                            .replace("{}", &count.to_string()),
+                    );
+                }
+                text.push(' ');
+                text.push_str(
+                    &self
+                        .text(
+                            "Listens sent this session: {sent}. Waiting to send: {pending}.",
+                            "Escutas enviadas nesta sessão: {sent}. Aguardando envio: {pending}.",
+                        )
+                        .replace("{sent}", &self.listens_sent.get().to_string())
+                        .replace("{pending}", &pending.to_string()),
+                );
+                text
+            }
+            Connection::InvalidToken => self
+                .text("This token is not valid.", "Este token não é válido.")
+                .to_owned(),
+            Connection::Unreachable => self
+                .text(
+                    "ListenBrainz could not be reached. Check the connection and that curl is installed.",
+                    "Não foi possível falar com o ListenBrainz. Confira a conexão e se o curl está instalado.",
+                )
+                .to_owned(),
+        };
+        label.set_visible(!text.is_empty());
+        if matches!(*self.listenbrainz_state.borrow(), Connection::Connected(..)) {
+            label.remove_css_class("dim-label");
+            label.add_css_class("success");
+        } else {
+            label.remove_css_class("success");
+            label.add_css_class("dim-label");
+        }
+        label.set_text(&text);
     }
 
     pub(crate) fn listenbrainz_preferences(self: &Rc<Self>, form: &gtk::Box) {
@@ -164,51 +274,13 @@ impl Player {
         status.set_wrap(true);
         status.add_css_class("dim-label");
         status.set_visible(false);
-        let check = {
-            let entry = entry.downgrade();
-            let status = status.downgrade();
-            button(
-                self.text("Check token", "Verificar token"),
-                self,
-                move |player| {
-                    let (Some(entry), Some(status)) = (entry.upgrade(), status.upgrade()) else {
-                        return;
-                    };
-                    let token = entry.text().trim().to_owned();
-                    if token.is_empty() {
-                        return;
-                    }
-                    status.set_text(player.text("Checking…", "Verificando…"));
-                    status.set_visible(true);
-                    let weak = Rc::downgrade(player);
-                    let status = status.downgrade();
-                    glib::spawn_future_local(async move {
-                        let result = gio::spawn_blocking(move || listenbrainz::validate(&token))
-                            .await
-                            .unwrap_or(Err(Error::Unavailable));
-                        let (Some(player), Some(status)) = (weak.upgrade(), status.upgrade())
-                        else {
-                            return;
-                        };
-                        status.set_text(&match result {
-                            Ok(user) => player
-                                .text("Connected as {}.", "Conectado como {}.")
-                                .replace("{}", &user),
-                            Err(Error::Token) => player
-                                .text("This token is not valid.", "Este token não é válido.")
-                                .to_owned(),
-                            Err(Error::Unavailable) => player
-                                .text(
-                                    "ListenBrainz could not be reached. Check the connection and that curl is installed.",
-                                    "Não foi possível falar com o ListenBrainz. Confira a conexão e se o curl está instalado.",
-                                )
-                                .to_owned(),
-                        });
-                    });
-                },
-            )
-        };
+        let check = button(
+            self.text("Check token", "Verificar token"),
+            self,
+            |player| player.verify_listenbrainz(),
+        );
         actions.append(&check);
+        self.listenbrainz_status.replace(Some(status.downgrade()));
         let link = button(
             self.text("Get your token", "Obter seu token"),
             self,
@@ -224,6 +296,7 @@ impl Player {
         actions.append(&link);
         form.append(&actions);
         form.append(&status);
+        self.refresh_listenbrainz_status();
         let description = gtk::Label::new(Some(self.text(
             "Ferritone sends the artist, title, album, and length of each track you play past halfway. File paths stay on this computer.",
             "O Ferritone envia artista, título, álbum e duração de cada faixa que você ouve além da metade. Os caminhos dos arquivos ficam neste computador.",
@@ -237,6 +310,7 @@ impl Player {
             if let Some(player) = weak.upgrade() {
                 player.state.borrow_mut().listenbrainz_enabled = toggle.is_active();
                 player.save();
+                player.verify_listenbrainz();
                 player.flush_listens();
             }
         });

@@ -43,6 +43,8 @@ pub struct Library {
     pub allow_sleep: bool,
     /// Lets the screen blank and lock while music plays; off keeps it on.
     pub allow_screen_lock: bool,
+    /// Draws the interface with the GPU, which is smoother on some screens but uses more memory.
+    pub gpu_rendering: bool,
     pub listenbrainz_enabled: bool,
     pub listenbrainz_token: String,
     /// Listens not yet accepted by ListenBrainz, oldest first.
@@ -126,6 +128,12 @@ pub enum MiniVisual {
     Bars,
     Mirror,
     Lyrics,
+    /// Bars around a ring that pulses with the music.
+    Ring,
+    /// Columns of lit dots, like an old stereo's meter.
+    Dots,
+    /// Three soft waves layered in shades of the accent.
+    Aurora,
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]
@@ -140,7 +148,12 @@ impl From<MiniVisual> for MiniDisplay {
     fn from(visual: MiniVisual) -> Self {
         let waveform = matches!(
             visual,
-            MiniVisual::Waveform | MiniVisual::Bars | MiniVisual::Mirror
+            MiniVisual::Waveform
+                | MiniVisual::Bars
+                | MiniVisual::Mirror
+                | MiniVisual::Ring
+                | MiniVisual::Dots
+                | MiniVisual::Aurora
         );
         Self {
             cover: visual == MiniVisual::Cover,

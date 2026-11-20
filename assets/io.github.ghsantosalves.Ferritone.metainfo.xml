@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.3" date="2026-11-20">
+      <description>
+        <p>Add the remote control to a phone or tablet's home screen: a button at the bottom of the remote page explains how in Chrome on Android and Safari on iPhone and iPad, and the shortcut gets Ferritone's name and icon and opens straight into the player.</p>
+      </description>
+    </release>
     <release version="0.2.2" date="2026-11-20">
       <description>
         <p>Uses far less memory by drawing the interface in software, with an option to use the graphics card instead. The mini player is redesigned: with lyrics the cover becomes a thumbnail and the lyrics fill a card, the waveform is a strip in the accent color, and three new visualizations join it: a pulsing ring, an LED meter, and an aurora. Preferences shows whether ListenBrainz is connected and how many listens it has recorded, and Home can play your most played tracks on ListenBrainz. Messages can be closed and go away on their own, and slider knobs no longer look selected at rest.</p>

@@ -47,6 +47,10 @@ mod tests {
                 }
             }
         }
-        assert!(missing.is_empty(), "missing translations:\n{}", missing.join("\n"));
+        assert!(
+            missing.is_empty(),
+            "missing translations:\n{}",
+            missing.join("\n")
+        );
     }
 }

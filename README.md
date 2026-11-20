@@ -146,7 +146,10 @@ M3U8 exports use relative paths for tracks below the export folder and absolute 
 
 | Area | Files |
 | --- | --- |
-| GTK window, playback controls, and GStreamer pipeline | `src/main.rs` |
+| Window setup, the `Player` state, and shared helpers | `src/main.rs` |
+| Pages, track tables, and search | `src/pages.rs`, `src/track_list.rs`, `src/search_ui.rs` |
+| Playback, the playback bar, and the current track | `src/transport.rs`, `src/now_playing.rs` |
+| Settings windows, file import and export | `src/settings_ui.rs`, `src/files.rs` |
 | Track skipping and autosave rules | `src/playback.rs` |
 | Mini player, waveform rendering, lyrics, and equalizer | `src/mini.rs`, `src/waveform.rs`, `src/lyrics.rs`, `src/equalizer.rs` |
 | Library state, tag reading, and playlist import | `src/library.rs`, `src/metadata.rs`, `src/playlist_file.rs` |

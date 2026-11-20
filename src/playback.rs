@@ -201,7 +201,13 @@ mod tests {
         let mut failures = Failures::default();
         let (tried, result) = run(&mut failures, 10, 2000);
         assert_eq!(tried, MAX_SKIPS);
-        assert_eq!(result, OnError::GiveUp { resume: 10, several: true });
+        assert_eq!(
+            result,
+            OnError::GiveUp {
+                resume: 10,
+                several: true
+            }
+        );
     }
 
     #[test]
@@ -209,7 +215,13 @@ mod tests {
         let mut failures = Failures::default();
         let (tried, result) = run(&mut failures, 0, 3);
         assert_eq!(tried, 3);
-        assert_eq!(result, OnError::GiveUp { resume: 0, several: true });
+        assert_eq!(
+            result,
+            OnError::GiveUp {
+                resume: 0,
+                several: true
+            }
+        );
     }
 
     #[test]
@@ -217,7 +229,10 @@ mod tests {
         let mut failures = Failures::default();
         assert_eq!(
             failures.failed(4, 5, false),
-            OnError::GiveUp { resume: 4, several: false }
+            OnError::GiveUp {
+                resume: 4,
+                several: false
+            }
         );
     }
 
@@ -244,7 +259,10 @@ mod tests {
     #[test]
     fn a_new_queue_does_not_inherit_failures() {
         let mut failures = Failures::default();
-        assert!(matches!(failures.failed(4, 5, false), OnError::GiveUp { .. }));
+        assert!(matches!(
+            failures.failed(4, 5, false),
+            OnError::GiveUp { .. }
+        ));
         // The user opens a two-track folder; its first track fails, the second is still tried.
         failures.started();
         assert_eq!(failures.failed(0, 2, true), OnError::Skip);

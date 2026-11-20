@@ -522,7 +522,8 @@ impl Library {
             },
         )?;
         // No fsync: losing the latest few seconds of position after a crash is harmless.
-        file.persist(resume_path(path)).map_err(|error| error.error)?;
+        file.persist(resume_path(path))
+            .map_err(|error| error.error)?;
         Ok(())
     }
 }

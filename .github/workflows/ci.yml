@@ -18,7 +18,7 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends \
-            ca-certificates git build-essential pkgconf cargo rustc \
+            ca-certificates git build-essential pkgconf cargo rustc rustfmt \
             libglib2.0-dev-bin libgtk-4-dev libgstreamer1.0-dev \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good
       - uses: actions/checkout@v7
@@ -30,6 +30,8 @@ jobs:
             target
           key: trixie-cargo-${{ hashFiles('Cargo.lock') }}
           restore-keys: trixie-cargo-
+      - name: Check formatting
+        run: cargo fmt --check
       - name: Build
         run: cargo build --locked
       - name: Test

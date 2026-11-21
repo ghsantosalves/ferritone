@@ -616,54 +616,37 @@ fn build(app: &gtk::Application) {
             };
             clear(&player.sidebar);
             let navigation_popup = gtk::Popover::new();
-            let navigation_items = gtk::Box::new(gtk::Orientation::Vertical, 4);
             player
                 .navigation
                 .set_tooltip_text(Some(player.text("Navigation", "Navegação")));
             navigation_popup.add_css_class("player-menu");
-            let sections = gtk::Box::new(gtk::Orientation::Vertical, 5);
-            player
-                .sidebar
-                .bind_property("visible", &navigation_items, "visible")
-                .invert_boolean()
-                .sync_create()
+            let sections = gtk::Box::new(gtk::Orientation::Vertical, 2);
+            // With the sidebar hidden, the pages show as a compact grid of icons at the top.
+            let navigation_items = gtk::Grid::builder()
+                .column_spacing(4)
+                .row_spacing(4)
+                .column_homogeneous(true)
                 .build();
+            navigation_items.add_css_class("nav-tiles");
+            let navigation_separator = gtk::Separator::new(gtk::Orientation::Horizontal);
+            for widget in [
+                navigation_items.upcast_ref::<gtk::Widget>(),
+                navigation_separator.upcast_ref(),
+            ] {
+                player
+                    .sidebar
+                    .bind_property("visible", widget, "visible")
+                    .invert_boolean()
+                    .sync_create()
+                    .build();
+            }
             sections.append(&navigation_items);
-            let popup = navigation_popup.downgrade();
-            sections.append(&button(
-                player.text("View", "Visualização"),
-                &player,
-                move |player| {
-                    if let Some(popup) = popup.upgrade() {
-                        popup.popdown();
-                    }
-                    let weak = Rc::downgrade(player);
-                    glib::idle_add_local_once(move || {
-                        if let Some(player) = weak.upgrade() {
-                            player.show_view_settings();
-                        }
-                    });
-                },
-            ));
-            let popup = navigation_popup.downgrade();
-            sections.append(&shortcut_button(
-                player.text("Manage library", "Gerenciar biblioteca"),
-                "<Primary><Shift>b",
-                None,
-                player.state.borrow().view.context_menu_keycaps,
-                &player,
-                move |player| {
-                    if let Some(popup) = popup.upgrade() {
-                        popup.popdown();
-                    }
-                    player.show_library_manager();
-                },
-            ));
+            sections.append(&navigation_separator);
             let wordmark = gtk::Label::new(Some(APP_NAME));
             wordmark.add_css_class("wordmark");
             player.sidebar.append(&wordmark);
             player.sidebar_items.borrow_mut().clear();
-            for (page, en, pt, icon) in [
+            for (index, (page, en, pt, icon)) in [
                 (Page::Home, "Home", "Início", "go-home-symbolic"),
                 (
                     Page::Library,
@@ -696,7 +679,10 @@ fn build(app: &gtk::Application) {
                     "Preferências",
                     "preferences-system-symbolic",
                 ),
-            ] {
+            ]
+            .into_iter()
+            .enumerate()
+            {
                 let item = button("", &player, move |player| player.show(page));
                 let line = gtk::Box::new(gtk::Orientation::Horizontal, 10);
                 line.append(&gtk::Image::from_icon_name(icon));
@@ -712,102 +698,127 @@ fn build(app: &gtk::Application) {
                 }
                 player.sidebar.append(&item);
                 let popup = navigation_popup.downgrade();
-                navigation_items.append(&button(player.text(en, pt), &player, move |player| {
+                let tile = button("", &player, move |player| {
                     if let Some(popup) = popup.upgrade() {
                         popup.popdown();
                     }
                     player.show(page);
-                }));
+                });
+                tile.add_css_class("nav-tile");
+                let content = gtk::Box::new(gtk::Orientation::Vertical, 4);
+                content.append(&gtk::Image::from_icon_name(icon));
+                let short = if page == Page::Playlists {
+                    player.text("Playlists", "Listas")
+                } else {
+                    player.text(en, pt)
+                };
+                let caption = gtk::Label::new(Some(short));
+                caption.set_ellipsize(gtk::pango::EllipsizeMode::End);
+                content.append(&caption);
+                tile.set_child(Some(&content));
+                tile.set_tooltip_text(Some(player.text(en, pt)));
+                navigation_items.attach(&tile, index as i32 % 4, index as i32 / 4, 1, 1);
             }
-            for (label, shortcut, action) in [
-                (
-                    player.text("Open files", "Abrir arquivos"),
-                    "<Primary>o",
-                    "win.open-files",
-                ),
-                (
-                    player.text("Open folder", "Abrir pasta"),
-                    "<Primary>k",
-                    "win.open-folder",
-                ),
-                (
-                    player.text("Import playlist", "Importar lista de reprodução"),
-                    "<Primary><Shift>o",
-                    "win.import-playlist",
-                ),
-            ] {
-                let popup = navigation_popup.downgrade();
-                sections.append(&shortcut_button(
-                    label,
-                    shortcut,
-                    None,
-                    false,
-                    &player,
-                    move |player| {
-                        if let Some(popup) = popup.upgrade() {
-                            popup.popdown();
-                        }
-                        let _ =
-                            gtk::prelude::WidgetExt::activate_action(&player.window, action, None);
-                    },
-                ));
+            let icons = player.state.borrow().view.context_menu_icons;
+            let item =
+                |label: &str, accelerator: &str, icon: &str, action: Box<dyn Fn(&Rc<Player>)>| {
+                    let popup = navigation_popup.downgrade();
+                    shortcut_button(
+                        label,
+                        accelerator,
+                        icons.then_some(icon),
+                        false,
+                        &player,
+                        move |player| {
+                            if let Some(popup) = popup.upgrade() {
+                                popup.popdown();
+                            }
+                            action(player);
+                        },
+                    )
+                };
+            let window_action = |name: &'static str| -> Box<dyn Fn(&Rc<Player>)> {
+                Box::new(move |player: &Rc<Player>| {
+                    let _ = gtk::prelude::WidgetExt::activate_action(&player.window, name, None);
+                })
+            };
+            let groups: [Vec<gtk::Button>; 3] = [
+                vec![
+                    item(
+                        player.text("Open folder", "Abrir pasta"),
+                        "<Primary>k",
+                        "folder-open-symbolic",
+                        window_action("win.open-folder"),
+                    ),
+                    item(
+                        player.text("Open files", "Abrir arquivos"),
+                        "<Primary>o",
+                        "document-open-symbolic",
+                        window_action("win.open-files"),
+                    ),
+                    item(
+                        player.text("Import playlist", "Importar lista"),
+                        "<Primary><Shift>o",
+                        "list-add-symbolic",
+                        window_action("win.import-playlist"),
+                    ),
+                ],
+                vec![
+                    item(
+                        player.text("Mini player", "Miniplayer"),
+                        "<Primary>m",
+                        "window-new-symbolic",
+                        Box::new(|player: &Rc<Player>| mini::open(player)),
+                    ),
+                    item(
+                        player.text("Equalizer", "Equalizador"),
+                        "<Primary>e",
+                        "audio-speakers-symbolic",
+                        Box::new(|player: &Rc<Player>| player.show_equalizer()),
+                    ),
+                    item(
+                        player.text("Sleep timer", "Timer para desligar"),
+                        "",
+                        "alarm-symbolic",
+                        Box::new(|player: &Rc<Player>| player.show_sleep_timer()),
+                    ),
+                    item(
+                        player.text("Remote control", "Controle remoto"),
+                        "",
+                        "phone-symbolic",
+                        Box::new(|player: &Rc<Player>| player.show_remote()),
+                    ),
+                ],
+                vec![
+                    item(
+                        player.text("View", "Visualização"),
+                        "",
+                        "view-grid-symbolic",
+                        Box::new(|player: &Rc<Player>| {
+                            let weak = Rc::downgrade(player);
+                            glib::idle_add_local_once(move || {
+                                if let Some(player) = weak.upgrade() {
+                                    player.show_view_settings();
+                                }
+                            });
+                        }),
+                    ),
+                    item(
+                        player.text("Manage library", "Gerenciar biblioteca"),
+                        "<Primary><Shift>b",
+                        "document-edit-symbolic",
+                        Box::new(|player: &Rc<Player>| player.show_library_manager()),
+                    ),
+                ],
+            ];
+            for (index, group) in groups.iter().enumerate() {
+                if index > 0 {
+                    sections.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
+                }
+                for button in group {
+                    sections.append(button);
+                }
             }
-            let popup = navigation_popup.downgrade();
-            sections.append(&shortcut_button(
-                player.text("Equalizer", "Equalizador"),
-                "<Primary>e",
-                None,
-                false,
-                &player,
-                move |player| {
-                    if let Some(popup) = popup.upgrade() {
-                        popup.popdown();
-                    }
-                    player.show_equalizer();
-                },
-            ));
-            let popup = navigation_popup.downgrade();
-            sections.append(&shortcut_button(
-                player.text("Mini player", "Miniplayer"),
-                "<Primary>m",
-                None,
-                false,
-                &player,
-                move |player| {
-                    if let Some(popup) = popup.upgrade() {
-                        popup.popdown();
-                    }
-                    mini::open(player);
-                },
-            ));
-            let popup = navigation_popup.downgrade();
-            sections.append(&shortcut_button(
-                player.text("Sleep timer", "Timer para desligar"),
-                "",
-                None,
-                false,
-                &player,
-                move |player| {
-                    if let Some(popup) = popup.upgrade() {
-                        popup.popdown();
-                    }
-                    player.show_sleep_timer();
-                },
-            ));
-            let popup = navigation_popup.downgrade();
-            sections.append(&shortcut_button(
-                player.text("Remote control", "Controle remoto"),
-                "",
-                None,
-                false,
-                &player,
-                move |player| {
-                    if let Some(popup) = popup.upgrade() {
-                        popup.popdown();
-                    }
-                    player.show_remote();
-                },
-            ));
             if let Some(previous) = player
                 .playlist_menu_delete
                 .parent()

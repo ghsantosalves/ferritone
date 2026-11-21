@@ -204,9 +204,17 @@ window.ferritone,
 .lyric-distant { opacity: 0.50; }
 
 .player-menu box button {
-    padding: 4px 12px;
+    padding: 0 12px;
+    min-height: 32px;
+    margin: 0;
 }
 .player-menu > contents { padding: 7px; min-width: 154px; }
+.player-menu separator { margin: 3px 6px; }
+.player-menu .nav-tiles { margin-bottom: 2px; }
+.player-menu box button.nav-tile { padding: 8px 2px 6px; min-width: 64px; border-radius: 10px; }
+.player-menu button.nav-tile label { font-size: 0.82em; }
+.player-menu button.nav-tile image { -gtk-icon-size: 18px; }
+.player-menu box button image { opacity: 0.85; }
 .context-menu > contents {
     background: @player_bg;
     padding: 3px;

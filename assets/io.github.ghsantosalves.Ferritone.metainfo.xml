@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.8" date="2026-11-20">
+      <description>
+        <p>The remote shows lyrics that the computer finds online after a track starts, instead of saying there are none, and tracks played on the phone get online lyrics too.</p>
+      </description>
+    </release>
     <release version="0.2.7" date="2026-11-20">
       <description>
         <p>The remote's lyrics glide smoothly from line to line instead of jumping, and the current line no longer flickers.</p>

@@ -406,7 +406,9 @@ impl Player {
 
     pub(crate) fn fit_sidebar(&self) {
         let visible = self.state.borrow().view.sidebar;
-        if self.sidebar.is_visible() != visible {
+        // get_visible reads the sidebar's own flag; is_visible also needs the window on screen,
+        // so at startup it reported "hidden" and the sidebar was never hidden.
+        if self.sidebar.get_visible() != visible {
             self.sidebar.set_visible(visible);
         }
     }

@@ -819,7 +819,22 @@ fn build(app: &gtk::Application) {
                 .playlist_menu_delete
                 .set_label(player.text("Delete playlist", "Excluir lista de reprodução"));
             sections.append(&player.playlist_menu_delete);
-            navigation_popup.set_child(Some(&sections));
+            // With the sidebar hidden the menu also lists every page and can be taller than the
+            // window; GTK then does not show it at all. Scrolling keeps it within the window.
+            let menu_scroll = gtk::ScrolledWindow::builder()
+                .child(&sections)
+                .hscrollbar_policy(gtk::PolicyType::Never)
+                .propagate_natural_height(true)
+                .propagate_natural_width(true)
+                .build();
+            let window = player.window.downgrade();
+            let scroll = menu_scroll.downgrade();
+            navigation_popup.connect_show(move |_| {
+                if let (Some(window), Some(scroll)) = (window.upgrade(), scroll.upgrade()) {
+                    scroll.set_max_content_height((window.height() - 120).max(160));
+                }
+            });
+            navigation_popup.set_child(Some(&menu_scroll));
             player.navigation.set_popover(Some(&navigation_popup));
             let artwork_label = player.text("Enlarge album cover", "Ampliar capa do álbum");
             player.artwork_button.set_tooltip_text(Some(artwork_label));

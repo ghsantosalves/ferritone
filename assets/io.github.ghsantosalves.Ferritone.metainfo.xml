@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.6" date="2026-11-20">
+      <description>
+        <p>A tidier playback menu: with the sidebar hidden, the pages show as a grid of icons, and the actions are grouped with icons and short shortcut labels so the whole menu fits a small window.</p>
+      </description>
+    </release>
     <release version="0.2.5" date="2026-11-20">
       <description>
         <p>Tap the cover on the remote to see the lyrics, synchronized with the current line highlighted. The sidebar stays hidden at startup when turned off, and the playback menu opens in narrow windows.</p>

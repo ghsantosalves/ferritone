@@ -628,7 +628,7 @@ const COVER_ICON = "M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h1
 const QUOTE_ICON = "M14 17h3l2-4V7h-6v6h3M6 17h3l2-4V7H5v6h3z";
 function trackKey() {
   return output === "phone" ? local.src + "/" + local.index
-                            : state ? [state.current, state.title, state.album].join("\u0001") : "";
+                            : state ? [state.current, state.title, state.album, state.lyrics_version].join("\u0001") : "";
 }
 function loadLyrics() {
   if (!showLyrics || !state) return;

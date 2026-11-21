@@ -117,6 +117,9 @@ pub struct Snapshot {
     pub shuffle: bool,
     pub repeat: String,
     pub current: Option<usize>,
+    /// Changes whenever the computer's lyrics for its track change, for example when they turn
+    /// up online after the track started, so the page knows to fetch them again.
+    pub lyrics_version: u64,
     /// Changes whenever the library list changes, so the page knows to fetch it again.
     pub library_version: u64,
     pub queue: Vec<Entry>,
@@ -136,6 +139,10 @@ pub struct Shared {
     /// The lyrics the computer shows for its current track, including ones found online, and
     /// the user's timing adjustment for them in milliseconds.
     pub current_lyrics: Mutex<(crate::lyrics::Lyrics, i32)>,
+    /// Whether the user lets Ferritone look lyrics up online.
+    pub online_lyrics: std::sync::atomic::AtomicBool,
+    /// Lyrics found online for tracks played on the phone, so each is looked up once.
+    pub phone_lyrics: Mutex<std::collections::HashMap<PathBuf, crate::lyrics::Lyrics>>,
     /// The app icon as PNG at 192 and 512 pixels, for home screen shortcuts.
     pub icons: Mutex<Option<(Vec<u8>, Vec<u8>)>>,
 }
@@ -340,6 +347,36 @@ fn lyrics_json(lyrics: &crate::lyrics::Lyrics, offset_ms: i32) -> serde_json::Va
     }
 }
 
+/// The file's own lyrics, or for a track played on the phone, lyrics looked up online the same
+/// way the computer does for its own tracks. Each request runs on its own thread, so the lookup
+/// does not hold up anything else.
+fn file_or_online_lyrics(path: &Path, query: &str, shared: &Shared) -> crate::lyrics::Lyrics {
+    use crate::lyrics::Lyrics;
+    let lyrics = Lyrics::read(path);
+    if lyrics != Lyrics::Missing
+        || param(query, "src") == Some("current")
+        || !shared.online_lyrics.load(Ordering::Relaxed)
+    {
+        return lyrics;
+    }
+    if let Some(found) = shared
+        .phone_lyrics
+        .lock()
+        .ok()
+        .and_then(|cache| cache.get(path).cloned())
+    {
+        return found;
+    }
+    let found = Lyrics::lookup_online(&crate::metadata::read_track(path), path).unwrap_or_default();
+    if let Ok(mut cache) = shared.phone_lyrics.lock() {
+        if cache.len() >= 64 {
+            cache.clear();
+        }
+        cache.insert(path.to_owned(), found.clone());
+    }
+    found
+}
+
 /// Answers one request. Kept free of socket I/O so it can be tested.
 pub fn respond(
     request: &Request,
@@ -440,12 +477,10 @@ pub fn respond(
                 .flatten()
                 .filter(|(lyrics, _)| *lyrics != crate::lyrics::Lyrics::Missing);
             let (lyrics, offset) = current.unwrap_or_else(|| {
-                (
-                    requested_file(query, shared)
-                        .map(|path| crate::lyrics::Lyrics::read(&path))
-                        .unwrap_or_default(),
-                    0,
-                )
+                let lyrics = requested_file(query, shared)
+                    .map(|path| file_or_online_lyrics(&path, query, shared))
+                    .unwrap_or_default();
+                (lyrics, 0)
             });
             Response::json(&lyrics_json(&lyrics, offset))
         }

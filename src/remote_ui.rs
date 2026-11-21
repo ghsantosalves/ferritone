@@ -273,8 +273,15 @@ impl Player {
                 .unwrap_or(0);
             if shared.0 != *lyrics || shared.1 != offset {
                 *shared = (lyrics.clone(), offset);
+                if let Ok(mut snapshot) = self.remote_shared.snapshot.lock() {
+                    snapshot.lyrics_version += 1;
+                }
             }
         }
+        self.remote_shared.online_lyrics.store(
+            state.view.online_lyrics,
+            std::sync::atomic::Ordering::Relaxed,
+        );
         let palette = self.palette();
         let Ok(mut snapshot) = self.remote_shared.snapshot.lock() else {
             return;

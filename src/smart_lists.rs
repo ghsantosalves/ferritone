@@ -210,8 +210,8 @@ impl Player {
                     "Nenhuma das suas mais ouvidas no ListenBrainz está na biblioteca ainda.",
                 )),
                 Err(_) => player.message(player.text(
-                    "ListenBrainz could not be reached. Check the connection and that curl is installed.",
-                    "Não foi possível falar com o ListenBrainz. Confira a conexão e se o curl está instalado.",
+                    "ListenBrainz could not be reached. Check the connection.",
+                    "Não foi possível falar com o ListenBrainz. Confira a conexão.",
                 )),
             }
         });

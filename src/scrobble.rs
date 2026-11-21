@@ -225,8 +225,8 @@ impl Player {
                 .to_owned(),
             Connection::Unreachable => self
                 .text(
-                    "ListenBrainz could not be reached. Check the connection and that curl is installed.",
-                    "Não foi possível falar com o ListenBrainz. Confira a conexão e se o curl está instalado.",
+                    "ListenBrainz could not be reached. Check the connection.",
+                    "Não foi possível falar com o ListenBrainz. Confira a conexão.",
                 )
                 .to_owned(),
         };

@@ -5,6 +5,7 @@ mod appearance;
 mod browser_shortcut;
 mod equalizer;
 mod files;
+mod http;
 mod i18n;
 mod library;
 mod library_view;

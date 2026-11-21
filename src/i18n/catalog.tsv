@@ -224,7 +224,7 @@ Check token	Comprobar token	Vérifier le jeton
 Connected as {}.	Conectado como {}.	Connecté en tant que {}.
 Ferritone sends the artist, title, album, and length of each track you play past halfway. File paths stay on this computer.	Ferritone envía el artista, el título, el álbum y la duración de cada pista que escuchas más allá de la mitad. Las rutas de los archivos se quedan en este equipo.	Ferritone envoie l’artiste, le titre, l’album et la durée de chaque piste écoutée au-delà de la moitié. Les chemins des fichiers restent sur cet ordinateur.
 Get your token	Obtener tu token	Obtenir votre jeton
-ListenBrainz could not be reached. Check the connection and that curl is installed.	No se pudo conectar con ListenBrainz. Comprueba la conexión y que curl esté instalado.	Impossible de joindre ListenBrainz. Vérifiez la connexion et que curl est installé.
+ListenBrainz could not be reached. Check the connection.	No se pudo conectar con ListenBrainz. Comprueba la conexión.	Impossible de joindre ListenBrainz. Vérifiez la connexion.
 ListenBrainz did not accept the user token. Check it in Preferences.	ListenBrainz no aceptó el token de usuario. Revísalo en Preferencias.	ListenBrainz n’a pas accepté le jeton utilisateur. Vérifiez-le dans les Préférences.
 ListenBrainz user token	Token de usuario de ListenBrainz	Jeton utilisateur ListenBrainz
 Submit listens to ListenBrainz	Enviar escuchas a ListenBrainz	Envoyer les écoutes à ListenBrainz

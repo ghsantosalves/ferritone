@@ -1,31 +1,17 @@
+/* Ferritone's colors, loaded over layout.css by the Ferritone theme. PLAYER_BACKGROUND and
+ * PLAYER_TEXT become the charcoal palette, and ACCENT_COLOR the chosen accent. */
+
 @define-color player_bg PLAYER_BACKGROUND;
 @define-color player_fg PLAYER_TEXT;
 @define-color player_accent ACCENT_COLOR;
 
-.compact-titlebar,
-.compact-titlebar > windowhandle > box {
-    min-height: 28px;
-    padding: 0 6px;
-}
-.compact-titlebar button {
-    min-height: 24px;
-    min-width: 24px;
-    padding: 0;
-}
-
 .sidebar {
     background: mix(@player_bg, @player_fg, 0.045);
     border-right: 1px solid mix(@player_bg, @player_fg, 0.14);
-    padding: 14px 10px;
-    min-width: 124px;
 }
-.sidebar button {
-    min-height: 26px;
-    padding: 2px 8px;
-}
+
 .page-actions > button:not(.row-action) {
     background-image: none;
-    border-radius: 5px;
     box-shadow: none;
     text-shadow: none;
 }
@@ -39,49 +25,29 @@
 .page-actions > button:not(.row-action):not(.suggested-action):active {
     background-color: mix(@player_bg, @player_fg, 0.15);
 }
-.wordmark {
-    font-weight: 700;
-    margin-bottom: 8px;
-}
-.content { padding: 12px 16px; }
-.page-title { font-size: 23px; font-weight: 800; }
-.section-title, .status { font-weight: 700; }
-.status { padding: 8px 16px 0; }
 
 .transport {
     background: mix(@player_bg, @player_fg, 0.045);
     border-top: 1px solid mix(@player_bg, @player_fg, 0.14);
-    padding: 4px 8px;
 }
-.transport button {
-    min-width: 26px;
-    min-height: 26px;
-    padding: 0;
-}
+
 .transport button:checked, .transport button.enabled {
     background: mix(@player_bg, @player_accent, 0.44);
     border-color: @player_accent;
     color: @player_fg;
 }
-.transport scale { padding: 0 4px; }
-.playing-title { font-weight: 700; }
-.playing-artist { font-size: 0.91em; opacity: 0.72; }
-.playback-clock { font-family: monospace; }
+
 scale highlight { background: @player_accent; }
 button.suggested-action {
     background: @player_accent;
     border-color: @player_accent;
     color: ACCENT_FOREGROUND;
-    font-weight: 700;
 }
 
 .drop-zone {
-    min-height: 24px;
-    padding: 4px 10px;
     background: transparent;
     box-shadow: none;
     border: 1px dashed mix(@player_bg, @player_accent, 0.65);
-    border-radius: 6px;
 }
 .drop-zone:hover { background: mix(@player_bg, @player_fg, 0.055); }
 .drop-zone:drop(active), .table-row:drop(active), .sidebar button:drop(active) {
@@ -90,17 +56,11 @@ button.suggested-action {
     outline: 2px solid @player_accent;
 }
 .track-header {
-    padding: 3px 5px;
-    font-size: 0.92em;
-    font-weight: 700;
     border-bottom: 1px solid mix(@player_bg, @player_fg, 0.14);
 }
 .table-row {
-    padding: 0 5px;
     border: 1px solid transparent;
-    border-radius: 0;
     box-shadow: none;
-    min-height: 27px;
     background: @player_bg;
     color: @player_fg;
 }
@@ -109,32 +69,23 @@ button.suggested-action {
 .table-row.current {
     border-left-color: @player_accent;
     background: mix(@player_bg, @player_accent, 0.30);
-    font-weight: 700;
 }
 .track-title, .row-action {
     background: transparent;
     border-color: transparent;
     box-shadow: none;
     color: @player_fg;
-    min-height: 26px;
-    padding: 0;
 }
-.row-action {
-    min-width: 26px;
-}
+
 .row-action:hover {
     background: mix(@player_bg, @player_fg, 0.13);
 }
-.empty-state { padding: 16px; }
 
 .transport .artwork-button {
-    padding: 0;
     border-color: transparent;
     background: transparent;
     box-shadow: none;
 }
-
-.view-options { padding: 4px; }
 
 .column-grip {
     background-image: linear-gradient(to right, transparent 44%, mix(@player_bg, @player_fg, 0.25) 44%, mix(@player_bg, @player_fg, 0.25) 56%, transparent 56%);
@@ -149,7 +100,6 @@ button.suggested-action {
 .transport menubutton > button {
     background: @player_surface;
     border-color: transparent;
-    border-radius: 8px;
     box-shadow: none;
 }
 .sidebar button:hover, .compact-titlebar menubutton > button:hover, .transport button:hover,
@@ -162,19 +112,14 @@ button.suggested-action {
 }
 .transport .artwork-button {
     background: transparent;
-    border-radius: 8px;
 }
 .transport .artwork-button:hover { background: @player_hover; }
-.transport scale trough { border-radius: 999px; }
-.transport scale highlight { border-radius: 999px; }
-.transport-menu button { min-width: 32px; }
 
 .track-header {
     border: 1px solid transparent;
     border-bottom-color: mix(@player_bg, @player_fg, 0.14);
 }
 .track-title { border: 0; }
-
 
 window.ferritone,
 .ferritone popover > contents {
@@ -186,46 +131,18 @@ window.ferritone,
     color: @player_fg;
 }
 
-.transport button, .transport menubutton > button {
-    min-width: 30px;
-    min-height: 30px;
-    border-radius: 7px;
-    padding: 0;
-}
 .transport-resize { background: @player_surface; }
 .transport-resize:hover, .transport-resize:active { background: @player_hover; }
 .transport-lyrics {
     background: @player_surface;
-    padding: 3px 12px;
-    font-size: 0.92em;
 }
-.lyric-current { font-weight: 700; }
-.lyric-nearby { opacity: 0.68; }
-.lyric-distant { opacity: 0.50; }
 
-.player-menu box button {
-    padding: 0 12px;
-    min-height: 32px;
-    margin: 0;
-}
-.player-menu > contents { padding: 7px; min-width: 154px; }
-.player-menu separator { margin: 3px 6px; }
-.player-menu .nav-tiles { margin-bottom: 2px; }
-.player-menu box button.nav-tile { padding: 8px 2px 6px; min-width: 64px; border-radius: 10px; }
-.player-menu button.nav-tile label { font-size: 0.82em; }
-.player-menu button.nav-tile image { -gtk-icon-size: 18px; }
-.player-menu box button image { opacity: 0.85; }
 .context-menu > contents {
     background: @player_bg;
-    padding: 3px;
-    border-radius: 6px;
 }
 .context-menu button.context-action {
-    min-height: 20px;
-    padding: 2px 9px;
     background: @player_bg;
     border: 0;
-    border-radius: 3px;
     box-shadow: none;
     color: @player_fg;
 }
@@ -237,25 +154,13 @@ window.ferritone,
     background: mix(@player_bg, @player_accent, 0.22);
     outline-color: @player_accent;
 }
-.context-menu button.context-action:disabled { opacity: 0.55; }
-.menu-shortcut { font-size: 0.85em; opacity: 0.68; }
-.menu-shortcut-keys { font-size: 0.8em; }
+
 .menu-shortcut-keys .keycap {
-    min-width: 13px;
-    min-height: 15px;
-    margin: 0;
-    padding: 0 4px;
     background: @player_surface;
     border: 1px solid mix(@player_bg, @player_fg, 0.20);
-    border-radius: 4px;
     box-shadow: none;
 }
-.search-bar button {
-    min-width: 25px;
-    min-height: 24px;
-    padding: 0;
-}
-.search-counter { padding: 0 5px; font-size: 0.9em; }
+
 .search-bar entry.search:focus-within {
     border-color: @player_accent;
     outline-color: @player_accent;
@@ -274,35 +179,25 @@ checkbutton check:checked {
 }
 .table-row.search-result { box-shadow: inset 0 0 0 1px @player_accent; }
 .preferences-control > button {
-    min-height: 21px;
-    padding: 2px 8px;
     background: @player_surface;
     border: 1px solid transparent;
-    border-radius: 5px;
     box-shadow: none;
 }
 .preferences-control > button:hover,
 .preferences-control > button:checked { background: @player_hover; }
 .track-header > overlay:drop(active) { background: @player_hover; }
 
-.mini-layout { padding: 9px; }
-.mini-visual { background: @player_surface; border-radius: 10px; }
-.mini-lyrics { padding: 10px 16px; font-size: 1.05em; }
-.mini-lyrics .lyric-current { font-size: 1.18em; }
+.mini-visual { background: @player_surface; }
 
 .library-tracks, .library-tracks row {
     background: @player_bg;
-    padding: 0;
-    margin: 0;
 }
 .library-tracks row {
     border: 0;
     outline: none;
     box-shadow: none;
 }
-.library-tracks row, .library-tracks .table-row, .library-tracks .row-action {
-    transition: none;
-}
+
 .library-tracks row:focus-visible .table-row {
     box-shadow: inset 0 0 0 1px mix(@player_bg, @player_fg, 0.45);
 }
@@ -314,82 +209,46 @@ checkbutton check:checked {
     background: mix(@player_bg, @player_accent, 0.36);
 }
 
-.album-card {
-  padding: 6px;
-}
-
-.album-cover {
-  border-radius: 8px;
-}
-
-.album-title {
-  font-weight: 700;
-}
-
-
 /* ---------------------------------------------------------------------------
  * Refined look. These rules come last so they take over from the plainer
  * defaults above while keeping the same colors.
  * ------------------------------------------------------------------------- */
 
-.content { padding: 18px 24px 14px; }
-.page-title { font-size: 26px; font-weight: 800; letter-spacing: -0.3px; }
-.section-title { font-size: 0.82em; font-weight: 800; letter-spacing: 0.6px; opacity: 0.62; }
-
 /* Sidebar: icon and label, with the page on screen tinted in the accent. */
 .sidebar {
     background: mix(@player_bg, @player_fg, 0.03);
     border-right: 1px solid mix(@player_bg, @player_fg, 0.08);
-    padding: 16px 10px;
-    min-width: 172px;
 }
-.wordmark { font-size: 1.12em; font-weight: 800; margin: 2px 0 16px; }
+
 .sidebar button {
-    min-height: 34px;
-    padding: 0 12px;
-    margin-bottom: 2px;
-    border-radius: 10px;
     background: transparent;
     border-color: transparent;
     box-shadow: none;
 }
-.sidebar button image { opacity: 0.72; }
+
 .sidebar button:hover { background: mix(@player_bg, @player_fg, 0.07); }
 .sidebar button.active {
     background: mix(@player_bg, @player_accent, 0.17);
-    font-weight: 700;
 }
-.sidebar button.active image { color: @player_accent; opacity: 1; }
+.sidebar button.active image { color: @player_accent; }
 
 /* Buttons on pages. */
-.page-actions > button:not(.row-action) {
-    min-height: 32px;
-    padding: 0 14px;
-    border-radius: 9px;
-}
-button.suggested-action { border-radius: 9px; }
-.drop-zone { border-radius: 10px; min-height: 30px; }
 
 /* Track tables: softer stripes, rounded rows, the playing track tinted. */
-.table-row { border-radius: 8px; border-left-width: 0; min-height: 30px; }
+.table-row { border-left-width: 0; }
 .table-row.alternate { background: mix(@player_bg, @player_fg, 0.03); }
 .table-row:hover { background: mix(@player_bg, @player_fg, 0.075); }
 .table-row.current {
     background: mix(@player_bg, @player_accent, 0.16);
     box-shadow: inset 3px 0 0 @player_accent;
 }
-.track-header { font-size: 0.82em; opacity: 0.75; padding: 4px 5px 6px; }
 
 /* Playback bar: flat round buttons, the play button filled with the accent. */
 .transport {
     background: mix(@player_bg, @player_fg, 0.035);
     border-top: 1px solid mix(@player_bg, @player_fg, 0.08);
-    padding: 8px 14px;
 }
 .transport button, .transport menubutton > button {
-    min-width: 34px;
-    min-height: 34px;
-    border-radius: 999px;
     background: transparent;
     border-color: transparent;
     box-shadow: none;
@@ -403,31 +262,18 @@ button.suggested-action { border-radius: 9px; }
     color: @player_accent;
 }
 .transport button.play-button {
-    min-width: 42px;
-    min-height: 42px;
     background: @player_accent;
     color: ACCENT_FOREGROUND;
 }
 .transport button.play-button:hover { background: mix(@player_accent, @player_bg, 0.14); }
-.transport button.play-button:disabled { opacity: 0.45; }
-.transport .artwork-button { border-radius: 8px; }
-.playing-title { font-weight: 750; }
-.playing-artist { opacity: 0.66; }
-.playback-clock { font-family: monospace; font-size: 0.88em; opacity: 0.75; }
 
 /* Slim sliders with an accent fill. */
 scale trough {
-    min-height: 4px;
-    border-radius: 999px;
     background: mix(@player_bg, @player_fg, 0.16);
     border: 0;
 }
-scale highlight { min-height: 4px; border-radius: 999px; background: @player_accent; border: 0; }
+scale highlight { background: @player_accent; border: 0; }
 scale slider {
-    min-width: 14px;
-    min-height: 14px;
-    margin: -5px;
-    border-radius: 999px;
     background: @player_accent;
     border: 0;
     box-shadow: 0 1px 2px alpha(black, 0.25);
@@ -437,28 +283,17 @@ scale slider:hover, scale slider:active { box-shadow: 0 0 0 3px alpha(@player_ac
 scale:disabled slider { background: mix(@player_bg, @player_fg, 0.3); box-shadow: none; }
 
 /* Album grid and pages. */
-.album-card { padding: 8px; border-radius: 14px; }
+
 .album-card:hover { background: mix(@player_bg, @player_fg, 0.06); }
-.album-cover { border-radius: 10px; }
 
 /* Mini player: a framed cover, the track centered, the same round controls. */
-.mini-layout { padding: 14px 16px 12px; }
-.mini-cover, .mini-visual { border-radius: 14px; }
-.mini-layout .playing-title { font-size: 1.12em; }
-.mini-layout .transport { background: transparent; border: 0; padding: 4px 0 0; }
-.mini-header { padding: 0 2px 2px; }
-.mini-thumb { border-radius: 10px; background: mix(@player_bg, @player_fg, 0.08); }
-.mini-waveform { border-radius: 12px; }
+
+.mini-layout .transport { background: transparent; border: 0; }
+
+.mini-thumb { background: mix(@player_bg, @player_fg, 0.08); }
+
 /* Lyrics sit on a soft card, the current line large and the others fading out. */
 .mini-lyric-card {
     background: mix(@player_bg, @player_fg, 0.045);
-    border-radius: 16px;
 }
-.mini-lyrics { background: transparent; padding: 14px 18px; font-size: 1em; }
-.mini-lyrics .lyric-current { font-size: 1.32em; font-weight: 800; }
-.mini-lyrics .lyric-nearby { opacity: 0.55; }
-.mini-lyrics .lyric-distant { opacity: 0.28; font-size: 0.92em; }
-.status-bar { padding: 4px 8px 0 0; }
-.status-bar .status { padding-right: 0; }
-.status-bar button { min-width: 26px; min-height: 26px; padding: 0; border-radius: 999px; }
-
+.mini-lyrics { background: transparent; }

@@ -1,5 +1,5 @@
 [package]
-name = "rust-music-player"
+name = "ferritone"
 version = "0.2.13"
 edition = "2024"
 rust-version = "1.85"
@@ -9,9 +9,12 @@ license = "GPL-3.0-only"
 
 [dependencies]
 gtk = { package = "gtk4", version = "0.9", features = ["v4_10"] }
+adw = { package = "libadwaita", version = "0.7", features = ["v1_7"] }
 gst = { package = "gstreamer", version = "0.23" }
 lofty = "0.22"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tempfile = "3"
+getrandom = "0.4"
+ureq = { version = "3", default-features = false, features = ["rustls"] }
 qrcode = { version = "0.15", default-features = false, features = ["std"] }

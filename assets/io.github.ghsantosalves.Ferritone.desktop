@@ -3,7 +3,7 @@ Type=Application
 Name=Ferritone
 Comment=Play music and manage playlists
 Comment[pt_BR]=Reproduza músicas e gerencie listas de reprodução
-Exec=rust-music-player
+Exec=ferritone
 Icon=io.github.ghsantosalves.Ferritone
 Terminal=false
 Categories=AudioVideo;Audio;Player;
@@ -14,14 +14,14 @@ Actions=PlayPause;Previous;Next;
 [Desktop Action PlayPause]
 Name=Play/Pause
 Name[pt_BR]=Tocar/Pausar
-Exec=sh -c "gdbus call --session --dest org.mpris.MediaPlayer2.Ferritone --object-path /org/mpris/MediaPlayer2 --method org.mpris.MediaPlayer2.Player.PlayPause >/dev/null 2>&1 || exec rust-music-player"
+Exec=sh -c "gdbus call --session --dest org.mpris.MediaPlayer2.Ferritone --object-path /org/mpris/MediaPlayer2 --method org.mpris.MediaPlayer2.Player.PlayPause >/dev/null 2>&1 || exec ferritone"
 
 [Desktop Action Previous]
 Name=Previous Track
 Name[pt_BR]=Faixa anterior
-Exec=sh -c "gdbus call --session --dest org.mpris.MediaPlayer2.Ferritone --object-path /org/mpris/MediaPlayer2 --method org.mpris.MediaPlayer2.Player.Previous >/dev/null 2>&1 || exec rust-music-player"
+Exec=sh -c "gdbus call --session --dest org.mpris.MediaPlayer2.Ferritone --object-path /org/mpris/MediaPlayer2 --method org.mpris.MediaPlayer2.Player.Previous >/dev/null 2>&1 || exec ferritone"
 
 [Desktop Action Next]
 Name=Next Track
 Name[pt_BR]=Próxima faixa
-Exec=sh -c "gdbus call --session --dest org.mpris.MediaPlayer2.Ferritone --object-path /org/mpris/MediaPlayer2 --method org.mpris.MediaPlayer2.Player.Next >/dev/null 2>&1 || exec rust-music-player"
+Exec=sh -c "gdbus call --session --dest org.mpris.MediaPlayer2.Ferritone --object-path /org/mpris/MediaPlayer2 --method org.mpris.MediaPlayer2.Player.Next >/dev/null 2>&1 || exec ferritone"

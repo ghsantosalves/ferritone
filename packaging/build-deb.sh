@@ -28,7 +28,7 @@ package="$work/debian/ferritone"
 appid=io.github.ghsantosalves.Ferritone
 doc="$package/usr/share/doc/ferritone"
 
-install -Dm755 target/release/rust-music-player "$package/usr/bin/rust-music-player"
+install -Dm755 target/release/ferritone "$package/usr/bin/ferritone"
 install -Dm644 "assets/$appid.desktop" "$package/usr/share/applications/$appid.desktop"
 install -Dm644 "assets/$appid.metainfo.xml" "$package/usr/share/metainfo/$appid.metainfo.xml"
 install -Dm644 assets/player-icon.svg "$package/usr/share/icons/hicolor/scalable/apps/$appid.svg"
@@ -44,7 +44,7 @@ Source: ferritone
 Package: ferritone
 Architecture: any
 CONTROL
-depends=$(cd "$work" && env -u LD_LIBRARY_PATH dpkg-shlibdeps -O -e "$package/usr/bin/rust-music-player")
+depends=$(cd "$work" && env -u LD_LIBRARY_PATH dpkg-shlibdeps -O -e "$package/usr/bin/ferritone")
 depends=${depends#shlibs:Depends=}
 if [[ -z "$depends" ]]; then
     printf '%s\n' 'Unable to derive shared-library dependencies.' >&2
@@ -59,7 +59,6 @@ Priority: optional
 Maintainer: ghsantosalves <40925712+ghsantosalves@users.noreply.github.com>
 Installed-Size: $(du -sk "$package/usr" | cut -f1)
 Depends: $depends, gstreamer1.0-plugins-base, gstreamer1.0-plugins-good, libglib2.0-bin
-Recommends: curl
 Homepage: https://github.com/ghsantosalves/ferritone
 Description: Music player for local audio collections
  Ferritone provides a searchable library, drag-and-drop playlists, a

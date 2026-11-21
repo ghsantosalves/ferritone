@@ -1,4 +1,4 @@
-use std::{fs, path::Path, process::Command};
+use std::{fs, path::Path, sync::OnceLock, time::Duration};
 
 use lofty::{config::ParseOptions, file::TaggedFileExt, probe::Probe, tag::ItemKey};
 
@@ -466,40 +466,23 @@ pub(crate) fn fold_search_name(text: &str) -> String {
         .collect()
 }
 
+const LRCLIB: &str = "https://lrclib.net/api";
+
+/// One LRCLIB query; `None` when LRCLIB cannot be reached within six seconds.
 fn lrclib_request(endpoint: &str, fields: &[(&str, &str)]) -> Option<(u16, String)> {
-    let mut request = Command::new("curl");
-    request.args([
-        "-q",
-        "--get",
-        "--silent",
-        "--max-time",
-        "6",
-        "--max-filesize",
-        "1048576",
-        "--write-out",
-        "\n%{http_code}",
-        "--user-agent",
-        concat!(
-            "Ferritone/",
-            env!("CARGO_PKG_VERSION"),
-            " (https://github.com/ghsantosalves/ferritone)"
-        ),
-    ]);
-    for (name, value) in fields {
-        request
-            .arg("--data-urlencode")
-            .arg(format!("{name}={value}"));
+    lrclib_request_at(LRCLIB, endpoint, fields)
+}
+
+fn lrclib_request_at(base: &str, endpoint: &str, fields: &[(&str, &str)]) -> Option<(u16, String)> {
+    static CLIENT: OnceLock<crate::http::Client> = OnceLock::new();
+    let client = CLIENT.get_or_init(|| crate::http::Client::new(Duration::from_secs(6)));
+    match client.get(&format!("{base}/{endpoint}"), fields, &[]) {
+        Ok(reply) => Some((reply.status, reply.body)),
+        Err(error) => {
+            eprintln!("Could not reach LRCLIB: {error}");
+            None
+        }
     }
-    let output = request
-        .arg(format!("https://lrclib.net/api/{endpoint}"))
-        .output()
-        .ok()?;
-    if !output.status.success() {
-        return None;
-    }
-    let output = String::from_utf8(output.stdout).ok()?;
-    let (body, status) = output.rsplit_once('\n')?;
-    Some((status.parse().ok()?, body.to_owned()))
 }
 
 fn parse_time(tag: &str) -> Option<u64> {
@@ -524,6 +507,34 @@ fn parse_time(tag: &str) -> Option<u64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lrclib_queries_are_url_encoded_and_failures_are_none() {
+        let (address, server) = crate::http::tests::serve_once(
+            b"HTTP/1.1 404 Not Found\r\nContent-Length: 2\r\n\r\n{}",
+            Duration::ZERO,
+        );
+        let reply = lrclib_request_at(
+            &address,
+            "get",
+            &[("track_name", "Canção & Mar"), ("artist_name", "Zé")],
+        );
+        assert_eq!(reply, Some((404, "{}".to_owned())));
+        let received = server.join().unwrap().unwrap();
+        assert_eq!(
+            received.request_line,
+            "GET /get?track_name=Can%C3%A7%C3%A3o%20%26%20Mar&artist_name=Z%C3%A9 HTTP/1.1"
+        );
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        assert_eq!(
+            lrclib_request_at(&format!("http://127.0.0.1:{port}"), "get", &[]),
+            None
+        );
+    }
 
     #[test]
     fn selects_timed_lines_after_seeking_and_handles_breaks() {

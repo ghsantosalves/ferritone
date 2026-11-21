@@ -1,0 +1,336 @@
+/* Sizes, spacing and shapes, loaded for every theme. Colors live in style.css, which the
+ * Ferritone theme loads over this file; GNOME/Adwaita leaves them to libadwaita. */
+
+.compact-titlebar,
+.compact-titlebar > windowhandle > box {
+    min-height: 28px;
+    padding: 0 6px;
+}
+.compact-titlebar button {
+    min-height: 24px;
+    min-width: 24px;
+    padding: 0;
+}
+
+.sidebar {
+    padding: 14px 10px;
+    min-width: 124px;
+}
+.sidebar button {
+    min-height: 26px;
+    padding: 2px 8px;
+}
+.page-actions > button:not(.row-action) {
+    border-radius: 5px;
+}
+
+.wordmark {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+.content { padding: 12px 16px; }
+.page-title { font-size: 23px; font-weight: 800; }
+.section-title { font-weight: 700; }
+
+.transport {
+    padding: 4px 8px;
+}
+.transport button {
+    min-width: 26px;
+    min-height: 26px;
+    padding: 0;
+}
+
+.transport scale { padding: 0 4px; }
+.playing-title { font-weight: 700; }
+.playing-artist { font-size: 0.91em; opacity: 0.72; }
+.playback-clock { font-family: monospace; }
+
+button.suggested-action {
+    font-weight: 700;
+}
+
+.drop-zone {
+    min-height: 24px;
+    padding: 4px 10px;
+    border-radius: 6px;
+}
+
+.track-header {
+    padding: 3px 5px;
+    font-size: 0.92em;
+    font-weight: 700;
+}
+.table-row {
+    padding: 0 5px;
+    border-radius: 0;
+    min-height: 27px;
+}
+
+.table-row.current {
+    font-weight: 700;
+}
+.track-title, .row-action {
+    min-height: 26px;
+    padding: 0;
+}
+.row-action {
+    min-width: 26px;
+}
+
+.empty-state { padding: 16px; }
+
+.transport .artwork-button {
+    padding: 0;
+}
+
+.view-options { padding: 4px; }
+
+/* Rounded controls use the native widget palette in both appearances. */
+
+.sidebar button, .compact-titlebar menubutton > button, .transport button,
+.transport menubutton > button {
+    border-radius: 8px;
+}
+
+.transport .artwork-button {
+    border-radius: 8px;
+}
+
+.transport scale trough { border-radius: 999px; }
+.transport scale highlight { border-radius: 999px; }
+.transport-menu button { min-width: 32px; }
+
+.transport button, .transport menubutton > button {
+    min-width: 30px;
+    min-height: 30px;
+    border-radius: 7px;
+    padding: 0;
+}
+
+.transport-lyrics {
+    padding: 3px 12px;
+    font-size: 0.92em;
+}
+.lyric-current { font-weight: 700; }
+.lyric-nearby { opacity: 0.68; }
+.lyric-distant { opacity: 0.50; }
+
+.player-menu box button {
+    padding: 0 12px;
+    min-height: 32px;
+    margin: 0;
+}
+.player-menu > contents { padding: 7px; min-width: 154px; }
+.player-menu separator { margin: 3px 6px; }
+.player-menu .nav-tiles { margin-bottom: 2px; }
+.player-menu box button.nav-tile { padding: 8px 2px 6px; min-width: 64px; border-radius: 10px; }
+.player-menu button.nav-tile label { font-size: 0.82em; }
+.player-menu button.nav-tile image { -gtk-icon-size: 18px; }
+.player-menu box button image { opacity: 0.85; }
+.context-menu > contents {
+    padding: 3px;
+    border-radius: 6px;
+}
+.context-menu button.context-action {
+    min-height: 20px;
+    padding: 2px 9px;
+    border-radius: 3px;
+}
+
+.context-menu button.context-action:disabled { opacity: 0.55; }
+.menu-shortcut { font-size: 0.85em; opacity: 0.68; }
+.menu-shortcut-keys { font-size: 0.8em; }
+.menu-shortcut-keys .keycap {
+    min-width: 13px;
+    min-height: 15px;
+    margin: 0;
+    padding: 0 4px;
+    border-radius: 4px;
+}
+.search-bar button {
+    min-width: 25px;
+    min-height: 24px;
+    padding: 0;
+}
+.search-counter { padding: 0 5px; font-size: 0.9em; }
+
+.preferences-control > button {
+    min-height: 21px;
+    padding: 2px 8px;
+    border-radius: 5px;
+}
+
+.mini-layout { padding: 9px; }
+.mini-visual { border-radius: 10px; }
+.mini-lyrics { padding: 10px 16px; font-size: 1.05em; }
+.mini-lyrics .lyric-current { font-size: 1.18em; }
+
+.library-tracks, .library-tracks row {
+    padding: 0;
+    margin: 0;
+}
+
+.library-tracks row, .library-tracks .table-row, .library-tracks .row-action {
+    transition: none;
+}
+
+.album-card {
+    padding: 6px;
+}
+
+.album-cover {
+    border-radius: 8px;
+}
+
+.album-title {
+    font-weight: 700;
+}
+
+/* ---------------------------------------------------------------------------
+ * Refined look. These rules come last so they take over from the plainer
+ * defaults above while keeping the same colors.
+ * ------------------------------------------------------------------------- */
+
+.content { padding: 18px 24px 14px; }
+.page-title { font-size: 26px; font-weight: 800; letter-spacing: -0.3px; }
+.section-title { font-size: 0.82em; font-weight: 800; letter-spacing: 0.6px; opacity: 0.62; }
+
+/* Sidebar: icon and label, with the page on screen tinted in the accent. */
+.sidebar {
+    padding: 16px 10px;
+    min-width: 172px;
+}
+.wordmark { font-size: 1.12em; font-weight: 800; margin: 2px 0 16px; }
+.sidebar button {
+    min-height: 34px;
+    padding: 0 12px;
+    margin-bottom: 2px;
+    border-radius: 10px;
+}
+.sidebar button image { opacity: 0.72; }
+
+.sidebar button.active {
+    font-weight: 700;
+}
+.sidebar button.active image { opacity: 1; }
+
+/* Buttons on pages. */
+.page-actions > button:not(.row-action) {
+    min-height: 32px;
+    padding: 0 14px;
+    border-radius: 9px;
+}
+button.suggested-action { border-radius: 9px; }
+.drop-zone { border-radius: 10px; min-height: 30px; }
+
+/* Track tables: softer stripes, rounded rows, the playing track tinted. */
+.table-row { border-radius: 8px; min-height: 30px; }
+
+.track-header { font-size: 0.82em; opacity: 0.75; padding: 4px 5px 6px; }
+
+/* Playback bar: flat round buttons, the play button filled with the accent. */
+.transport {
+    padding: 8px 14px;
+}
+.transport button, .transport menubutton > button {
+    min-width: 34px;
+    min-height: 34px;
+    border-radius: 999px;
+}
+
+.transport button.play-button {
+    min-width: 42px;
+    min-height: 42px;
+}
+
+.transport button.play-button:disabled { opacity: 0.45; }
+.transport .artwork-button { border-radius: 8px; }
+.playing-title { font-weight: 750; }
+.playing-artist { opacity: 0.66; }
+.playback-clock { font-family: monospace; font-size: 0.88em; opacity: 0.75; }
+
+/* Slim sliders with an accent fill. */
+scale trough {
+    min-height: 4px;
+    border-radius: 999px;
+}
+scale highlight { min-height: 4px; border-radius: 999px; }
+scale slider {
+    min-width: 14px;
+    min-height: 14px;
+    margin: -5px;
+    border-radius: 999px;
+}
+/* The ring around the knob only shows while it is hovered or dragged. */
+
+/* Album grid and pages. */
+.album-card { padding: 8px; border-radius: 14px; }
+
+.album-cover { border-radius: 10px; }
+
+/* Mini player: a framed cover, the track centered, the same round controls. */
+.mini-layout { padding: 14px 16px 12px; }
+.mini-cover, .mini-visual { border-radius: 14px; }
+.mini-layout .playing-title { font-size: 1.12em; }
+.mini-layout .transport { padding: 4px 0 0; }
+.mini-header { padding: 0 2px 2px; }
+.mini-thumb { border-radius: 10px; }
+.mini-waveform { border-radius: 12px; }
+/* Lyrics sit on a soft card, the current line large and the others fading out. */
+.mini-lyric-card {
+    border-radius: 16px;
+}
+.mini-lyrics { padding: 14px 18px; font-size: 1em; }
+.mini-lyrics .lyric-current { font-size: 1.32em; font-weight: 800; }
+.mini-lyrics .lyric-nearby { opacity: 0.55; }
+.mini-lyrics .lyric-distant { opacity: 0.28; font-size: 0.92em; }
+
+/* ---------------------------------------------------------------------------
+ * Without Ferritone's colors (the GNOME/Adwaita theme), the custom rows and bars stay flat
+ * and take libadwaita's named colors. style.css replaces all of these in the other themes.
+ * ------------------------------------------------------------------------- */
+
+.sidebar button, .table-row, .track-title, .row-action, .transport button,
+.transport menubutton > button, .transport .artwork-button,
+.context-menu button.context-action {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+}
+.sidebar button:hover, .table-row:hover, .row-action:hover, .transport button:hover,
+.transport menubutton > button:hover, .transport .artwork-button:hover,
+.context-menu button.context-action:hover, .album-card:hover {
+    background: alpha(currentColor, 0.07);
+}
+.sidebar button.active { background: alpha(@accent_bg_color, 0.17); }
+.sidebar button.active image { color: @accent_color; }
+.table-row.alternate { background: alpha(currentColor, 0.03); }
+.table-row.current {
+    background: alpha(@accent_bg_color, 0.16);
+    box-shadow: inset 3px 0 0 @accent_bg_color;
+}
+.table-row.search-result { box-shadow: inset 0 0 0 1px @accent_bg_color; }
+.library-tracks, .library-tracks row { background: transparent; }
+.library-tracks row { border: 0; outline: none; box-shadow: none; }
+.library-tracks row:selected .table-row { background: alpha(@accent_bg_color, 0.18); }
+.transport button:checked, .transport button.enabled {
+    background: alpha(@accent_bg_color, 0.16);
+    color: @accent_color;
+}
+.transport button.play-button { background: @accent_bg_color; color: @accent_fg_color; }
+.drop-zone {
+    background: transparent;
+    box-shadow: none;
+    border: 1px dashed alpha(@accent_bg_color, 0.65);
+}
+.drop-zone:drop(active), .table-row:drop(active), .sidebar button:drop(active) {
+    background: alpha(@accent_bg_color, 0.30);
+    outline: 2px solid @accent_bg_color;
+    outline-offset: -2px;
+}
+.column-grip {
+    background-image: linear-gradient(to right, transparent 44%, alpha(currentColor, 0.25) 44%, alpha(currentColor, 0.25) 56%, transparent 56%);
+}
+.transport-resize:hover, .transport-resize:active { background: alpha(currentColor, 0.07); }
+.transport-lyrics, .mini-visual, .mini-lyric-card, .mini-thumb { background: alpha(currentColor, 0.05); }

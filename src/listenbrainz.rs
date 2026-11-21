@@ -1,12 +1,8 @@
-//! Submits listens to ListenBrainz (https://listenbrainz.org) through `curl`.
+//! Submits listens to ListenBrainz (https://listenbrainz.org).
 //!
-//! The user token reaches curl through its standard input as a config file, so it never
-//! appears in the process list.
+//! The user token travels only in the Authorization header over HTTPS.
 
-use std::{
-    io::Write,
-    process::{Command, Stdio},
-};
+use std::{sync::OnceLock, time::Duration};
 
 use serde::{Deserialize, Serialize};
 
@@ -83,72 +79,21 @@ pub fn submit_body(kind: Kind, listens: &[Listen]) -> String {
     serde_json::json!({ "listen_type": listen_type, "payload": payload }).to_string()
 }
 
-/// Quotes a value for a curl config file.
-fn quote(value: &str) -> String {
-    let mut quoted = String::with_capacity(value.len() + 2);
-    quoted.push('"');
-    for character in value.chars() {
-        match character {
-            '"' => quoted.push_str("\\\""),
-            '\\' => quoted.push_str("\\\\"),
-            '\n' => quoted.push_str("\\n"),
-            '\r' => quoted.push_str("\\r"),
-            '\t' => quoted.push_str("\\t"),
-            other => quoted.push(other),
-        }
-    }
-    quoted.push('"');
-    quoted
-}
-
-fn curl_config(token: &str, url: &str, body: Option<&str>) -> String {
-    let mut config = format!(
-        "url = {}\nheader = {}\n",
-        quote(url),
-        quote(&format!("Authorization: Token {}", token.trim()))
-    );
-    if let Some(body) = body {
-        config.push_str("header = \"Content-Type: application/json\"\n");
-        config.push_str(&format!("data-binary = {}\n", quote(body)));
-    }
-    config
-}
-
 fn request(token: &str, url: &str, body: Option<&str>) -> Result<(u16, String), Error> {
-    let mut child = Command::new("curl")
-        .args([
-            "-q",
-            "--silent",
-            "--max-time",
-            "15",
-            "--max-filesize",
-            "1048576",
-            "--write-out",
-            "\n%{http_code}",
-            "--user-agent",
-            concat!(
-                "Ferritone/",
-                env!("CARGO_PKG_VERSION"),
-                " (https://github.com/ghsantosalves/ferritone)"
-            ),
-            "--config",
-            "-",
-        ])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .map_err(|_| Error::Unavailable)?;
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(curl_config(token, url, body).as_bytes())
-            .map_err(|_| Error::Unavailable)?;
-    }
-    let output = child.wait_with_output().map_err(|_| Error::Unavailable)?;
-    let output = String::from_utf8(output.stdout).map_err(|_| Error::Unavailable)?;
-    let (body, status) = output.rsplit_once('\n').ok_or(Error::Unavailable)?;
-    let status = status.trim().parse().map_err(|_| Error::Unavailable)?;
-    Ok((status, body.to_owned()))
+    static CLIENT: OnceLock<crate::http::Client> = OnceLock::new();
+    let client = CLIENT.get_or_init(|| crate::http::Client::new(Duration::from_secs(15)));
+    let authorization = format!("Token {}", token.trim());
+    let headers = [("Authorization", authorization.as_str())];
+    let reply = match body {
+        Some(body) => client.post_json(url, &headers, body),
+        None => client.get(url, &[], &headers),
+    };
+    // Any failure to talk to ListenBrainz is worth retrying later; the listens stay queued.
+    let reply = reply.map_err(|error| {
+        eprintln!("Could not reach ListenBrainz: {error}");
+        Error::Unavailable
+    })?;
+    Ok((reply.status, reply.body))
 }
 
 fn check(status: u16) -> Result<(), Error> {
@@ -280,69 +225,40 @@ mod tests {
     }
 
     #[test]
-    fn the_curl_config_quotes_the_token_and_body() {
-        let body = submit_body(Kind::Single, &[listen()]);
-        let config = curl_config(" abc-123 \n", "https://example.org/x", Some(&body));
-        assert!(config.contains("header = \"Authorization: Token abc-123\"\n"));
-        // Quotes and backslashes in the body are escaped, so the value cannot end early.
-        let data = config
-            .lines()
-            .find(|line| line.starts_with("data-binary"))
-            .unwrap();
-        assert!(
-            data.contains(r#"\"artist_name\":\"Coastal \\\"Static\\\"\""#),
-            "{data}"
+    fn requests_send_the_token_header_and_body() {
+        let (address, server) = crate::http::tests::serve_once(
+            b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+            Duration::ZERO,
         );
-        assert!(!config.contains("\n\n"));
-    }
-
-    #[test]
-    fn curl_sends_the_token_header_and_body() {
-        use std::io::{BufRead, BufReader, Read};
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let port = listener.local_addr().unwrap().port();
-        let server = std::thread::spawn(move || {
-            let (stream, _) = listener.accept().unwrap();
-            let mut reader = BufReader::new(stream.try_clone().unwrap());
-            let (mut headers, mut length) = (Vec::new(), 0);
-            loop {
-                let mut line = String::new();
-                reader.read_line(&mut line).unwrap();
-                if line == "\r\n" {
-                    break;
-                }
-                if let Some(value) = line.to_lowercase().strip_prefix("content-length:") {
-                    length = value.trim().parse().unwrap();
-                }
-                headers.push(line.trim_end().to_owned());
-            }
-            let mut body = vec![0; length];
-            reader.read_exact(&mut body).unwrap();
-            let mut stream = stream;
-            stream
-                .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
-                .unwrap();
-            (headers, String::from_utf8(body).unwrap())
-        });
         let body = submit_body(Kind::Single, &[listen()]);
         let reply = request(
-            "secret-token",
-            &format!("http://127.0.0.1:{port}/submit"),
+            " secret-token \n",
+            &format!("{address}/submit"),
             Some(&body),
         );
         assert_eq!(reply, Ok((200, "ok".to_owned())));
-        let (headers, received) = server.join().unwrap();
-        assert!(
-            headers
+        let received = server.join().unwrap().unwrap();
+        assert_eq!(received.request_line, "POST /submit HTTP/1.1");
+        let has = |expected: &str| {
+            received
+                .headers
                 .iter()
-                .any(|header| header == "Authorization: Token secret-token")
-        );
-        assert!(
-            headers
-                .iter()
-                .any(|header| header == "Content-Type: application/json")
-        );
-        assert_eq!(received, body);
+                .any(|header| header.eq_ignore_ascii_case(expected))
+        };
+        assert!(has("authorization: Token secret-token"));
+        assert!(has("content-type: application/json"));
+        assert_eq!(received.body, body);
+    }
+
+    #[test]
+    fn unreachable_servers_leave_listens_for_later() {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let reply = request("token", &format!("http://127.0.0.1:{port}/"), None);
+        assert_eq!(reply, Err(Error::Unavailable));
     }
 
     #[test]

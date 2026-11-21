@@ -23,27 +23,25 @@ fn browser_kind(app: &gio::AppInfo) -> &'static str {
 }
 
 impl Player {
-    pub(crate) fn browser_shortcut_preferences(self: &Rc<Self>, form: &gtk::Box) {
-        let title = gtk::Label::new(Some(self.text("Browser shortcut", "Atalho no navegador")));
-        title.add_css_class("section-title");
-        title.set_xalign(0.0);
-        form.append(&title);
-        let description = gtk::Label::new(Some(self.text(
+    pub(crate) fn browser_shortcut_preferences(self: &Rc<Self>) -> adw::PreferencesGroup {
+        let group = adw::PreferencesGroup::new();
+        group.set_title(self.text("Browser shortcut", "Atalho no navegador"));
+        group.set_description(Some(self.text(
             "Open the player by typing ferritone in your browser while Ferritone is open.",
             "Abra o player digitando ferritone no navegador enquanto o Ferritone estiver aberto.",
         )));
-        description.set_xalign(0.0);
-        description.set_wrap(true);
-        form.append(&description);
-        let install = button(
-            self.text("Install browser shortcut", "Instalar atalho no navegador"),
-            self,
-            |player| player.show_browser_shortcut(),
-        );
-        let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        actions.add_css_class("page-actions");
-        actions.append(&install);
-        form.append(&actions);
+        let install = adw::ButtonRow::builder()
+            .title(self.text("Install browser shortcut", "Instalar atalho no navegador"))
+            .end_icon_name("go-next-symbolic")
+            .build();
+        let weak = Rc::downgrade(self);
+        install.connect_activated(move |_| {
+            if let Some(player) = weak.upgrade() {
+                player.show_browser_shortcut();
+            }
+        });
+        group.add(&install);
+        group
     }
 
     fn show_browser_shortcut(self: &Rc<Self>) {

@@ -483,14 +483,8 @@ impl Player {
             return;
         }
         let sort = SORT_COLUMNS[column];
-        let next = match self.local_sort.get() {
-            Some((same, previous, false)) if same == page && previous == sort => {
-                Some((page, sort, true))
-            }
-            Some((same, previous, true)) if same == page && previous == sort => None,
-            _ => Some((page, sort, false)),
-        };
-        self.local_sort.set(next);
+        self.local_sort
+            .set(next_local_sort(self.local_sort.get(), page, sort));
         let weak = Rc::downgrade(self);
         glib::idle_add_local_once(move || {
             if let Some(player) = weak.upgrade() {

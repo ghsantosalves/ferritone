@@ -225,62 +225,40 @@ impl Player {
                 .to_owned(),
             Connection::Unreachable => self
                 .text(
-                    "ListenBrainz could not be reached. Check the connection and that curl is installed.",
-                    "Não foi possível falar com o ListenBrainz. Confira a conexão e se o curl está instalado.",
+                    "ListenBrainz could not be reached. Check the connection.",
+                    "Não foi possível falar com o ListenBrainz. Confira a conexão.",
                 )
                 .to_owned(),
         };
         label.set_visible(!text.is_empty());
         if matches!(*self.listenbrainz_state.borrow(), Connection::Connected(..)) {
-            label.remove_css_class("dim-label");
             label.add_css_class("success");
         } else {
             label.remove_css_class("success");
-            label.add_css_class("dim-label");
         }
-        label.set_text(&text);
+        label.set_subtitle(&glib::markup_escape_text(&text));
     }
 
-    pub(crate) fn listenbrainz_preferences(self: &Rc<Self>, form: &gtk::Box) {
-        let title = gtk::Label::new(Some("ListenBrainz"));
-        title.add_css_class("section-title");
-        title.set_xalign(0.0);
-        form.append(&title);
+    pub(crate) fn listenbrainz_preferences(self: &Rc<Self>) -> adw::PreferencesGroup {
+        let group = adw::PreferencesGroup::new();
+        group.set_title("ListenBrainz");
+        group.set_description(Some(self.text(
+            "Ferritone sends the artist, title, album, and length of each track you play past halfway. File paths stay on this computer.",
+            "O Ferritone envia artista, título, álbum e duração de cada faixa que você ouve além da metade. Os caminhos dos arquivos ficam neste computador.",
+        )));
         let (enabled, token) = {
             let state = self.state.borrow();
             (state.listenbrainz_enabled, state.listenbrainz_token.clone())
         };
-        let toggle = gtk::CheckButton::with_label(self.text(
-            "Submit listens to ListenBrainz",
-            "Enviar o que eu ouço ao ListenBrainz",
-        ));
-        toggle.set_active(enabled);
-        form.append(&toggle);
-        let entry = gtk::PasswordEntry::builder()
-            .show_peek_icon(true)
-            .placeholder_text(self.text("User token", "Token do usuário"))
-            .text(&token)
-            .build();
-        entry.add_css_class("preferences-control");
-        entry.update_property(&[gtk::accessible::Property::Label(self.text(
-            "ListenBrainz user token",
-            "Token de usuário do ListenBrainz",
-        ))]);
-        form.append(&entry);
         let actions = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         actions.add_css_class("page-actions");
-        let status = gtk::Label::new(None);
-        status.set_xalign(0.0);
-        status.set_wrap(true);
-        status.add_css_class("dim-label");
-        status.set_visible(false);
+        actions.set_valign(gtk::Align::Center);
         let check = button(
             self.text("Check token", "Verificar token"),
             self,
             |player| player.verify_listenbrainz(),
         );
         actions.append(&check);
-        self.listenbrainz_status.replace(Some(status.downgrade()));
         let link = button(
             self.text("Get your token", "Obter seu token"),
             self,
@@ -294,19 +272,34 @@ impl Player {
         );
         link.set_tooltip_text(Some("https://listenbrainz.org/settings/"));
         actions.append(&link);
-        form.append(&actions);
-        form.append(&status);
+        group.set_header_suffix(Some(&actions));
+        let toggle = adw::SwitchRow::builder()
+            .title(self.text(
+                "Submit listens to ListenBrainz",
+                "Enviar o que eu ouço ao ListenBrainz",
+            ))
+            .active(enabled)
+            .build();
+        group.add(&toggle);
+        let entry = adw::PasswordEntryRow::builder()
+            .title(self.text("User token", "Token do usuário"))
+            .text(&token)
+            .build();
+        entry.update_property(&[gtk::accessible::Property::Label(self.text(
+            "ListenBrainz user token",
+            "Token de usuário do ListenBrainz",
+        ))]);
+        group.add(&entry);
+        let status = adw::ActionRow::new();
+        status.set_title(self.text("Status", "Estado"));
+        status.set_subtitle_selectable(true);
+        status.set_visible(false);
+        group.add(&status);
+        self.listenbrainz_status.replace(Some(status.downgrade()));
         self.refresh_listenbrainz_status();
-        let description = gtk::Label::new(Some(self.text(
-            "Ferritone sends the artist, title, album, and length of each track you play past halfway. File paths stay on this computer.",
-            "O Ferritone envia artista, título, álbum e duração de cada faixa que você ouve além da metade. Os caminhos dos arquivos ficam neste computador.",
-        )));
-        description.set_xalign(0.0);
-        description.set_wrap(true);
-        form.append(&description);
 
         let weak = Rc::downgrade(self);
-        toggle.connect_toggled(move |toggle| {
+        toggle.connect_active_notify(move |toggle| {
             if let Some(player) = weak.upgrade() {
                 player.state.borrow_mut().listenbrainz_enabled = toggle.is_active();
                 player.save();
@@ -321,5 +314,6 @@ impl Player {
                 player.save();
             }
         });
+        group
     }
 }

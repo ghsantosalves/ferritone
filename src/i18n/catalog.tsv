@@ -224,7 +224,7 @@ Check token	Comprobar token	Vérifier le jeton
 Connected as {}.	Conectado como {}.	Connecté en tant que {}.
 Ferritone sends the artist, title, album, and length of each track you play past halfway. File paths stay on this computer.	Ferritone envía el artista, el título, el álbum y la duración de cada pista que escuchas más allá de la mitad. Las rutas de los archivos se quedan en este equipo.	Ferritone envoie l’artiste, le titre, l’album et la durée de chaque piste écoutée au-delà de la moitié. Les chemins des fichiers restent sur cet ordinateur.
 Get your token	Obtener tu token	Obtenir votre jeton
-ListenBrainz could not be reached. Check the connection and that curl is installed.	No se pudo conectar con ListenBrainz. Comprueba la conexión y que curl esté instalado.	Impossible de joindre ListenBrainz. Vérifiez la connexion et que curl est installé.
+ListenBrainz could not be reached. Check the connection.	No se pudo conectar con ListenBrainz. Comprueba la conexión.	Impossible de joindre ListenBrainz. Vérifiez la connexion.
 ListenBrainz did not accept the user token. Check it in Preferences.	ListenBrainz no aceptó el token de usuario. Revísalo en Preferencias.	ListenBrainz n’a pas accepté le jeton utilisateur. Vérifiez-le dans les Préférences.
 ListenBrainz user token	Token de usuario de ListenBrainz	Jeton utilisateur ListenBrainz
 Submit listens to ListenBrainz	Enviar escuchas a ListenBrainz	Envoyer les écoutes à ListenBrainz
@@ -262,3 +262,10 @@ Looking up your most played tracks on ListenBrainz…	Buscando tus pistas más e
 None of your most played tracks on ListenBrainz are in the library yet.	Ninguna de tus pistas más escuchadas en ListenBrainz está todavía en la biblioteca.	Aucune de vos pistes les plus écoutées sur ListenBrainz n’est encore dans la bibliothèque.
 Listens recorded on ListenBrainz: {}.	Escuchas registradas en ListenBrainz: {}.	Écoutes enregistrées sur ListenBrainz : {}.
 ListenBrainz has not calculated your statistics yet. It does so once a day, so try again tomorrow.	ListenBrainz todavía no ha calculado tus estadísticas. Lo hace una vez al día, así que vuelve a intentarlo mañana.	ListenBrainz n’a pas encore calculé vos statistiques. Il le fait une fois par jour, réessayez demain.
+Status	Estado	État
+Theme	Tema	Thème
+System	Sistema	Système
+Color scheme	Esquema de colores	Jeu de couleurs
+Could not make a new link: no secure random source is available.	No se pudo crear un enlace nuevo: no hay una fuente aleatoria segura disponible.	Impossible de créer un nouveau lien : aucune source aléatoire sûre n’est disponible.
+Charcoal and copper, always dark.	Carbón y cobre, siempre oscuro.	Charbon et cuivre, toujours sombre.
+GNOME's own look, with the system accent color.	El aspecto propio de GNOME, con el color de énfasis del sistema.	L’apparence propre à GNOME, avec la couleur d’accentuation du système.

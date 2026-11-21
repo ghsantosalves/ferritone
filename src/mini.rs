@@ -29,7 +29,7 @@ pub fn open(player: &Rc<Player>) {
     if matches!(player.state.borrow().theme, Theme::Ferritone) {
         window.add_css_class("ferritone");
     }
-    let header = gtk::HeaderBar::new();
+    let header = adw::HeaderBar::new();
     header.add_css_class("compact-titlebar");
     let heading = gtk::Label::new(Some(player.text("Mini player", "Miniplayer")));
     heading.add_css_class("title");
@@ -500,6 +500,12 @@ pub fn open(player: &Rc<Player>) {
     volume.set_tooltip_text(Some(player.text("Volume", "Volume")));
     controls.append(&visual);
     controls.append(&volume);
+    // The play button is taller than the others; centering keeps the rest round.
+    let mut child = controls.first_child();
+    while let Some(widget) = child {
+        widget.set_valign(gtk::Align::Center);
+        child = widget.next_sibling();
+    }
     layout.append(&controls);
     window.set_child(Some(&layout));
 

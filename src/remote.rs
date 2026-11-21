@@ -12,7 +12,7 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc, Mutex,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
         mpsc,
     },
     thread,
@@ -530,18 +530,73 @@ fn tokens_match(supplied: &str, token: &str) -> bool {
             == 0
 }
 
-/// A new random token for the link.
-pub fn new_token() -> String {
+/// A new random token for the link, from the system's secure random source. Fails rather
+/// than fall back to a guessable token, and the remote then stays off.
+pub fn new_token() -> io::Result<String> {
+    token_from(getrandom::fill)
+}
+
+fn token_from<E: std::fmt::Display>(
+    fill: impl FnOnce(&mut [u8]) -> Result<(), E>,
+) -> io::Result<String> {
     let mut bytes = [0u8; 16];
-    if std::fs::File::open("/dev/urandom")
-        .and_then(|mut file| file.read_exact(&mut bytes))
-        .is_err()
-    {
-        for chunk in bytes.chunks_mut(4) {
-            chunk.copy_from_slice(&gtk::glib::random_int().to_ne_bytes());
+    fill(&mut bytes).map_err(|error| {
+        io::Error::other(format!("no secure random source for the link: {error}"))
+    })?;
+    Ok(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+/// How many requests the server handles at once; more wait for a 503 and retry.
+const MAX_CONNECTIONS: usize = 32;
+/// A client that sends nothing for this long is dropped.
+const READ_TIMEOUT: Duration = Duration::from_secs(5);
+/// Long enough for a phone that pauses reading while its audio buffer is full.
+const WRITE_TIMEOUT: Duration = Duration::from_secs(120);
+
+#[derive(Clone, Copy)]
+struct Limits {
+    connections: usize,
+    read_timeout: Duration,
+    write_timeout: Duration,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            connections: MAX_CONNECTIONS,
+            read_timeout: READ_TIMEOUT,
+            write_timeout: WRITE_TIMEOUT,
         }
     }
-    bytes.iter().map(|byte| format!("{byte:02x}")).collect()
+}
+
+/// One of the server's connection slots, given back when dropped.
+struct Slot(Arc<AtomicUsize>);
+
+impl Slot {
+    fn claim(active: &Arc<AtomicUsize>, limit: usize) -> Option<Self> {
+        active
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |count| {
+                (count < limit).then_some(count + 1)
+            })
+            .ok()
+            .map(|_| Self(active.clone()))
+    }
+}
+
+impl Drop for Slot {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
+/// Turns away a connection beyond the limit without tying up the accepting thread.
+fn reject(mut stream: TcpStream) {
+    let _ = stream.set_nonblocking(false);
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(1)));
+    let _ = stream.write_all(
+        b"HTTP/1.1 503 Service Unavailable\r\nRetry-After: 1\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+    );
 }
 
 /// The address other devices on the network can reach this computer at.
@@ -568,29 +623,56 @@ impl Server {
         commands: mpsc::Sender<Command>,
         lan: bool,
     ) -> io::Result<Self> {
+        Self::start_with(
+            token,
+            shared,
+            commands,
+            lan,
+            PREFERRED_PORT,
+            Limits::default(),
+        )
+    }
+
+    fn start_with(
+        token: String,
+        shared: Arc<Shared>,
+        commands: mpsc::Sender<Command>,
+        lan: bool,
+        preferred_port: u16,
+        limits: Limits,
+    ) -> io::Result<Self> {
         let address = if lan {
             Ipv4Addr::UNSPECIFIED
         } else {
             Ipv4Addr::LOCALHOST
         };
-        let listener = TcpListener::bind((address, PREFERRED_PORT))
+        let listener = TcpListener::bind((address, preferred_port))
             .or_else(|_| TcpListener::bind((address, 0)))?;
         let port = listener.local_addr()?.port();
         listener.set_nonblocking(true)?;
         let stop = Arc::new(AtomicBool::new(false));
         let stopped = stop.clone();
         let token = Arc::new(token);
+        let active = Arc::new(AtomicUsize::new(0));
         thread::Builder::new()
             .name("remote-control".into())
             .spawn(move || {
                 while !stopped.load(Ordering::Relaxed) {
                     match listener.accept() {
                         Ok((stream, _)) => {
+                            let Some(slot) = Slot::claim(&active, limits.connections) else {
+                                reject(stream);
+                                continue;
+                            };
                             let (token, shared, commands) =
                                 (token.clone(), shared.clone(), commands.clone());
-                            thread::spawn(move || {
-                                let _ = serve(stream, &token, &shared, &commands);
-                            });
+                            // A thread that cannot start drops its slot with the closure.
+                            let _ = thread::Builder::new().name("remote-request".into()).spawn(
+                                move || {
+                                    let _slot = slot;
+                                    let _ = serve(stream, &token, &shared, &commands, limits);
+                                },
+                            );
                         }
                         Err(error) if error.kind() == io::ErrorKind::WouldBlock => {
                             thread::sleep(Duration::from_millis(100));
@@ -627,11 +709,11 @@ fn serve(
     token: &str,
     shared: &Shared,
     commands: &mpsc::Sender<Command>,
+    limits: Limits,
 ) -> io::Result<()> {
     stream.set_nonblocking(false)?;
-    stream.set_read_timeout(Some(Duration::from_secs(5)))?;
-    // Long enough for a phone that pauses reading while its audio buffer is full.
-    stream.set_write_timeout(Some(Duration::from_secs(120)))?;
+    stream.set_read_timeout(Some(limits.read_timeout))?;
+    stream.set_write_timeout(Some(limits.write_timeout))?;
     let mut reader = BufReader::new(stream.try_clone()?);
     let mut request_line = String::new();
     let mut header_bytes = reader.read_line(&mut request_line)?;
@@ -1080,8 +1162,75 @@ mod tests {
 
     #[test]
     fn tokens_are_long_and_different() {
-        let (first, second) = (new_token(), new_token());
+        let (first, second) = (new_token().unwrap(), new_token().unwrap());
         assert_eq!(first.len(), 32);
+        assert!(first.bytes().all(|byte| byte.is_ascii_hexdigit()));
         assert_ne!(first, second);
+    }
+
+    #[test]
+    fn no_token_without_a_secure_random_source() {
+        let error = token_from(|_: &mut [u8]| Err("unavailable")).unwrap_err();
+        assert!(error.to_string().contains("unavailable"), "{error}");
+        let fixed = token_from(|bytes: &mut [u8]| {
+            bytes.fill(0xab);
+            Ok::<(), &str>(())
+        });
+        assert_eq!(fixed.unwrap(), "ab".repeat(16));
+    }
+
+    fn get_root(port: u16) -> String {
+        let mut stream = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        stream
+            .set_read_timeout(Some(Duration::from_secs(5)))
+            .unwrap();
+        write!(stream, "GET / HTTP/1.1\r\nHost: localhost:{port}\r\n\r\n").unwrap();
+        let mut reply = String::new();
+        let _ = stream.read_to_string(&mut reply);
+        reply
+    }
+
+    #[test]
+    fn connections_beyond_the_limit_are_turned_away_until_slots_free_up() {
+        let (sender, _receiver) = mpsc::channel();
+        let limits = Limits {
+            connections: 2,
+            read_timeout: Duration::from_millis(400),
+            write_timeout: Duration::from_secs(1),
+        };
+        let server =
+            Server::start_with("abc".into(), Arc::default(), sender, false, 0, limits).unwrap();
+        // Two clients that connect and send nothing hold both slots.
+        let idle: Vec<_> = (0..2)
+            .map(|_| TcpStream::connect(("127.0.0.1", server.port)).unwrap())
+            .collect();
+        thread::sleep(Duration::from_millis(250));
+        let refused = get_root(server.port);
+        assert!(refused.starts_with("HTTP/1.1 503"), "{refused}");
+        // The read timeout drops the silent clients and gives their slots back.
+        thread::sleep(Duration::from_millis(700));
+        let mut closed = [0u8; 1];
+        for mut stream in idle {
+            stream
+                .set_read_timeout(Some(Duration::from_secs(2)))
+                .unwrap();
+            assert_eq!(stream.read(&mut closed).unwrap(), 0);
+        }
+        let served = get_root(server.port);
+        assert!(served.starts_with("HTTP/1.1 200"), "{served}");
+    }
+
+    #[test]
+    fn slots_are_counted_and_given_back() {
+        let active = Arc::new(AtomicUsize::new(0));
+        let first = Slot::claim(&active, 2).unwrap();
+        let second = Slot::claim(&active, 2).unwrap();
+        assert!(Slot::claim(&active, 2).is_none());
+        drop(first);
+        assert_eq!(active.load(Ordering::Acquire), 1);
+        let third = Slot::claim(&active, 2);
+        assert!(third.is_some());
+        drop((second, third));
+        assert_eq!(active.load(Ordering::Acquire), 0);
     }
 }

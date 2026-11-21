@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.7" date="2026-11-20">
+      <description>
+        <p>The remote's lyrics glide smoothly from line to line instead of jumping, and the current line no longer flickers.</p>
+      </description>
+    </release>
     <release version="0.2.6" date="2026-11-20">
       <description>
         <p>A tidier playback menu: with the sidebar hidden, the pages show as a grid of icons, and the actions are grouped with icons and short shortcut labels so the whole menu fits a small window.</p>

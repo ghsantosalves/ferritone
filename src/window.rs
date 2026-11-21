@@ -376,10 +376,15 @@ fn lay_out(
     playback_bar.append(&player.lyric_panel);
     playback_bar.append(&resize_strip);
     playback_bar.append(&player.transport);
+    // The playback bar sits in the content, not among the toolbar's bottom bars: libadwaita
+    // makes those bars drag the window, which took over dragging the lyrics and the grips.
+    let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    player.toasts.set_vexpand(true);
+    body.append(&player.toasts);
+    body.append(&playback_bar);
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(titlebar);
-    toolbar.set_content(Some(&player.toasts));
-    toolbar.add_bottom_bar(&playback_bar);
+    toolbar.set_content(Some(&body));
     player.window.set_content(Some(&toolbar));
     if let Some(display) = gdk::Display::default() {
         // The theme's colors rank above the layout so they replace its plain fallbacks.

@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.11" date="2026-11-21">
+      <description>
+        <p>On the remote, search results move to the top of the screen so the floating search field never covers them, even when there is a single match.</p>
+      </description>
+    </release>
     <release version="0.2.10" date="2026-11-21">
       <description>
         <p>The remote's floating search button opens a search field right beside it, so long lists can be filtered without scrolling back up.</p>

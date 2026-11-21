@@ -2,7 +2,7 @@
 
 Ferritone is a Linux desktop music player written in Rust with GTK 4 and libadwaita. It organizes local audio into a searchable library, saved playlists, and a playback queue you can resume after restarting the app.
 
-![Ferritone's Home page with saved playlists and the playback bar](assets/screenshots/home.png)
+![Ferritone's library with tracks sorted by title and the playback bar](assets/screenshots/library.png)
 
 ## Install
 
@@ -27,6 +27,15 @@ On other distributions, download the `.flatpak` file from the same release and i
 - Two looks: Ferritone's own charcoal with the accent color you choose, or plain GNOME/Adwaita in light or dark. English, Brazilian Portuguese, Spanish, and French.
 
 Ferritone plays local audio; file format support depends on the installed GStreamer plugins.
+
+## Screenshots
+
+| | |
+| --- | --- |
+| ![Home with smart lists and saved playlists](assets/screenshots/home.png) | ![Albums as a grid of covers](assets/screenshots/albums.png) |
+| Home, with smart lists and saved playlists | Albums, as a grid of covers |
+| ![A playlist with reorder buttons and a drop zone](assets/screenshots/playlist.png) | ![The mini player showing synchronized lyrics](assets/screenshots/mini.png) |
+| A playlist you reorder by dragging | The mini player with synchronized lyrics |
 
 ## Documentation
 

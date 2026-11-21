@@ -21,7 +21,7 @@ pub struct Library {
     pub position_ms: u64,
     pub language: Language,
     pub theme: Theme,
-    /// Light or dark for the System and GNOME/Adwaita themes; Ferritone is always dark.
+    /// Light or dark for the GNOME/Adwaita theme; Ferritone is always dark.
     pub color_scheme: ColorScheme,
     pub accent: Accent,
     pub repeat: Repeat,
@@ -218,15 +218,16 @@ pub enum Language {
 
 #[derive(Clone, Copy, Default, Deserialize, Serialize)]
 pub enum Theme {
+    /// Charcoal and copper, always dark, with the chosen accent.
     #[default]
     Ferritone,
-    /// Ferritone's own look in the desktop's colors, with the chosen accent.
-    System,
     /// Plain libadwaita: no colors of Ferritone's own, the desktop's accent.
     Adwaita,
-    /// Saved by older versions, when light and dark were themes; read as System.
+    /// Saved by older versions: Ferritone's look in the desktop's colors. Read as Adwaita.
+    System,
+    /// Saved by older versions, when light and dark were themes. Read as Adwaita.
     Light,
-    /// Saved by older versions, when light and dark were themes; read as System.
+    /// Saved by older versions, when light and dark were themes. Read as Adwaita.
     Dark,
 }
 
@@ -606,12 +607,15 @@ impl Library {
 
     /// Light and dark used to be themes of their own; they are now System with a color scheme.
     fn migrate_theme(&mut self) {
+        // The System theme, and Light and Dark before it, followed the desktop's colors, which
+        // GNOME/Adwaita does now; Light and Dark keep their scheme.
         let scheme = match self.theme {
             Theme::Light => ColorScheme::Light,
             Theme::Dark => ColorScheme::Dark,
-            _ => return,
+            Theme::System => self.color_scheme,
+            Theme::Ferritone | Theme::Adwaita => return,
         };
-        self.theme = Theme::System;
+        self.theme = Theme::Adwaita;
         self.color_scheme = scheme;
     }
 
@@ -771,12 +775,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn light_and_dark_themes_load_as_system_with_a_color_scheme() {
+    fn older_themes_load_as_adwaita_with_their_color_scheme() {
         let directory = tempfile::tempdir().unwrap();
         let path = directory.path().join("library.json");
         for (saved, theme, scheme) in [
-            ("Light", Theme::System, ColorScheme::Light),
-            ("Dark", Theme::System, ColorScheme::Dark),
+            ("Light", Theme::Adwaita, ColorScheme::Light),
+            ("Dark", Theme::Adwaita, ColorScheme::Dark),
+            ("System", Theme::Adwaita, ColorScheme::System),
             ("Ferritone", Theme::Ferritone, ColorScheme::System),
             ("Adwaita", Theme::Adwaita, ColorScheme::System),
         ] {

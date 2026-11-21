@@ -1,6 +1,5 @@
-/* Ferritone's colors, loaded over layout.css by the Ferritone and System themes. PLAYER_BACKGROUND
- * and PLAYER_TEXT are the charcoal palette in Ferritone and libadwaita's @window_bg_color and
- * @window_fg_color in System, so these rules follow the desktop's light or dark style there. */
+/* Ferritone's colors, loaded over layout.css by the Ferritone theme. PLAYER_BACKGROUND and
+ * PLAYER_TEXT become the charcoal palette, and ACCENT_COLOR the chosen accent. */
 
 @define-color player_bg PLAYER_BACKGROUND;
 @define-color player_fg PLAYER_TEXT;

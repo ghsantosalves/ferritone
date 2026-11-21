@@ -499,14 +499,10 @@ impl Player {
 
         let appearance = adw::PreferencesGroup::new();
         appearance.set_title(self.text("Appearance", "Aparência"));
-        let theme = combo_row(
-            self.text("Theme", "Tema"),
-            &[APP_NAME, self.text("System", "Sistema"), "GNOME/Adwaita"],
-        );
+        let theme = combo_row(self.text("Theme", "Tema"), &[APP_NAME, "GNOME/Adwaita"]);
         theme.set_selected(match self.state.borrow().theme {
             Theme::Ferritone => 0,
-            Theme::System | Theme::Light | Theme::Dark => 1,
-            Theme::Adwaita => 2,
+            _ => 1,
         });
         let scheme = combo_row(
             self.text("Color scheme", "Esquema de cores"),
@@ -554,22 +550,20 @@ impl Player {
                     return;
                 };
                 let theme = player.state.borrow().theme;
-                row.set_subtitle(match theme {
-                    Theme::Ferritone => player.text(
+                let ferritone = matches!(theme, Theme::Ferritone);
+                row.set_subtitle(if ferritone {
+                    player.text(
                         "Charcoal and copper, always dark.",
                         "Carvão e cobre, sempre escuro.",
-                    ),
-                    Theme::Adwaita => player.text(
+                    )
+                } else {
+                    player.text(
                         "GNOME's own look, with the system accent color.",
                         "O visual do próprio GNOME, com a cor de destaque do sistema.",
-                    ),
-                    Theme::System | Theme::Light | Theme::Dark => player.text(
-                        "Ferritone's look in the desktop's light or dark colors.",
-                        "O visual do Ferritone nas cores claras ou escuras do desktop.",
-                    ),
+                    )
                 });
-                scheme.set_visible(!matches!(theme, Theme::Ferritone));
-                accent.set_visible(!matches!(theme, Theme::Adwaita));
+                scheme.set_visible(!ferritone);
+                accent.set_visible(ferritone);
             }
         };
         fit_rows();
@@ -577,8 +571,7 @@ impl Player {
         theme.connect_selected_notify(move |theme| {
             let Some(player) = weak.upgrade() else { return };
             player.state.borrow_mut().theme = match theme.selected() {
-                1 => Theme::System,
-                2 => Theme::Adwaita,
+                1 => Theme::Adwaita,
                 _ => Theme::Ferritone,
             };
             fit_rows();
@@ -851,7 +844,7 @@ impl Player {
         );
         let (accent, accent_text) = match self.accent_colors() {
             // GNOME/Adwaita and an unknown system accent take libadwaita's resolved accent.
-            _ if matches!(self.state.borrow().theme, Theme::Adwaita) => {
+            _ if !matches!(self.state.borrow().theme, Theme::Ferritone) => {
                 (system_accent.as_str(), "#ffffff")
             }
             ("@accent_bg_color", _) => (system_accent.as_str(), "#ffffff"),
@@ -906,17 +899,14 @@ impl Player {
                 }
             }
         }
-        if matches!(theme, Theme::Adwaita) {
+        if !ferritone {
             // Only the layout stays; libadwaita draws every color.
             self.css.load_from_data("");
             return;
         }
         let (accent, foreground) = self.accent_colors();
-        let mut colors = String::new();
-        if ferritone {
-            // libadwaita's own widgets, such as dialogs, rows and popovers, take the charcoal too.
-            colors.push_str(FERRITONE_COLORS);
-        }
+        // libadwaita's own widgets, such as dialogs, rows and popovers, take the charcoal too.
+        let mut colors = String::from(FERRITONE_COLORS);
         // The chosen accent also colors libadwaita's switches, links and suggested buttons.
         // The desktop's own accent is already libadwaita's, and naming it again would loop.
         if !accent.starts_with('@') {
@@ -926,15 +916,10 @@ impl Player {
              @define-color accent_color {accent};\n"
             ));
         }
-        let (background, text) = if ferritone {
-            ("#1e1d1b", "#f5f3ef")
-        } else {
-            ("@window_bg_color", "@window_fg_color")
-        };
         colors.push_str(
             &include_str!("style.css")
-                .replace("PLAYER_BACKGROUND", background)
-                .replace("PLAYER_TEXT", text)
+                .replace("PLAYER_BACKGROUND", "#1e1d1b")
+                .replace("PLAYER_TEXT", "#f5f3ef")
                 .replace("ACCENT_COLOR", accent)
                 .replace("ACCENT_FOREGROUND", foreground),
         );

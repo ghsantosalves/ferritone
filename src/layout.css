@@ -1,5 +1,5 @@
 /* Sizes, spacing and shapes, loaded for every theme. Colors live in style.css, which the
- * Ferritone and System themes load over this file; GNOME/Adwaita leaves them to libadwaita. */
+ * Ferritone theme loads over this file; GNOME/Adwaita leaves them to libadwaita. */
 
 .compact-titlebar,
 .compact-titlebar > windowhandle > box {

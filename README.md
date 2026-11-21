@@ -24,7 +24,7 @@ On other distributions, download the `.flatpak` file from the same release and i
 - Synchronized lyrics from `.lrc` files or tags, with an optional [LRCLIB](https://lrclib.net) lookup.
 - A [phone remote](docs/remote.md) on your home network, with no internet service in between.
 - Optional [ListenBrainz](docs/listenbrainz.md) scrobbling, MPRIS desktop media controls, and a GNOME Shell dock extension.
-- Three looks: Ferritone's charcoal and copper, Ferritone in your desktop's colors, or plain GNOME/Adwaita. English, Brazilian Portuguese, Spanish, and French.
+- Two looks: Ferritone's own charcoal with the accent color you choose, or plain GNOME/Adwaita in light or dark. English, Brazilian Portuguese, Spanish, and French.
 
 Ferritone plays local audio; file format support depends on the installed GStreamer plugins.
 

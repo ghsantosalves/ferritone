@@ -6,7 +6,7 @@ use super::*;
 pub(crate) type LibraryRefresh = Rc<dyn Fn(&str)>;
 pub(crate) type PlaylistIndicator = (usize, glib::WeakRef<gtk::Box>, glib::WeakRef<gtk::Image>);
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Page {
     Home,
     Library,
@@ -289,6 +289,23 @@ impl Player {
     }
 }
 
+/// The sort a click on a column header leads to on `page`: ascending, then descending on the
+/// same column, then back to the list's own order. Sorting only changes how a page shows its
+/// rows; the queue and its playback order stay as they are.
+pub(crate) fn next_local_sort(
+    current: Option<(Page, TrackSort, bool)>,
+    page: Page,
+    sort: TrackSort,
+) -> Option<(Page, TrackSort, bool)> {
+    match current {
+        Some((same, previous, false)) if same == page && previous == sort => {
+            Some((page, sort, true))
+        }
+        Some((same, previous, true)) if same == page && previous == sort => None,
+        _ => Some((page, sort, false)),
+    }
+}
+
 pub(crate) fn sort_tracks(
     tracks: &mut [(usize, &PathBuf)],
     metadata: &HashMap<PathBuf, TrackInfo>,
@@ -377,5 +394,74 @@ pub(crate) fn track_cell_text<'a>(
             .map_or(Cow::Borrowed("—"), |duration| {
                 Cow::Owned(timestamp(duration))
             }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn tagged(title: &str, artist: &str) -> TrackInfo {
+        TrackInfo {
+            title: Some(title.to_owned()),
+            artist: Some(artist.to_owned()),
+            ..TrackInfo::default()
+        }
+    }
+
+    #[test]
+    fn column_sort_cycles_ascending_descending_then_original() {
+        let queue = Some(Page::Queue);
+        let first = next_local_sort(None, Page::Queue, TrackSort::Title);
+        assert_eq!(first, queue.map(|page| (page, TrackSort::Title, false)));
+        let second = next_local_sort(first, Page::Queue, TrackSort::Title);
+        assert_eq!(second, queue.map(|page| (page, TrackSort::Title, true)));
+        assert_eq!(next_local_sort(second, Page::Queue, TrackSort::Title), None);
+        // Another column or another page starts over at ascending.
+        assert_eq!(
+            next_local_sort(second, Page::Queue, TrackSort::Artist),
+            queue.map(|page| (page, TrackSort::Artist, false))
+        );
+        assert_eq!(
+            next_local_sort(first, Page::Library, TrackSort::Title),
+            Some((Page::Library, TrackSort::Title, false))
+        );
+    }
+
+    #[test]
+    fn sorting_the_queue_view_leaves_the_playback_order_alone() {
+        let mut state = Library {
+            queue: ["c.flac", "a.flac", "b.flac"]
+                .into_iter()
+                .map(PathBuf::from)
+                .collect(),
+            current: 0,
+            ..Library::default()
+        };
+        let metadata: HashMap<PathBuf, TrackInfo> = [
+            ("c.flac", tagged("Charlie", "Zed")),
+            ("a.flac", tagged("Alpha", "Yan")),
+            ("b.flac", tagged("bravo", "Xia")),
+        ]
+        .into_iter()
+        .map(|(path, info)| (PathBuf::from(path), info))
+        .collect();
+        let queue = state.queue.clone();
+        let rows = |sort: Option<(TrackSort, bool)>| {
+            let mut rows: Vec<_> = queue.iter().enumerate().collect();
+            if let Some((sort, descending)) = sort {
+                sort_tracks(&mut rows, &metadata, sort, descending);
+            }
+            rows.into_iter().map(|(index, _)| index).collect::<Vec<_>>()
+        };
+        assert_eq!(rows(Some((TrackSort::Title, false))), [1, 2, 0]);
+        assert_eq!(rows(Some((TrackSort::Title, true))), [0, 2, 1]);
+        assert_eq!(rows(Some((TrackSort::Artist, false))), [2, 1, 0]);
+        assert_eq!(rows(None), [0, 1, 2]);
+        // The rows only change how the page lists the queue.
+        assert_eq!(state.queue, queue);
+        assert_eq!(state.next_index(1, true), Some(1));
+        state.current = 1;
+        assert_eq!(state.next_index(1, true), Some(2));
     }
 }

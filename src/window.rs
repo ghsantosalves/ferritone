@@ -812,11 +812,7 @@ fn connect_playback_controls(player: &Rc<Player>, previous: &gtk::Button, next: 
     player.repeat.connect_clicked(move |_| {
         let Some(player) = weak.upgrade() else { return };
         let mut state = player.state.borrow_mut();
-        state.repeat = match state.repeat {
-            Repeat::Off => Repeat::Queue,
-            Repeat::Queue => Repeat::Track,
-            Repeat::Track => Repeat::Off,
-        };
+        state.repeat = state.repeat.next();
         drop(state);
         player.update_repeat();
         player.save();

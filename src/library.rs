@@ -113,7 +113,7 @@ impl Default for ViewOptions {
     }
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub enum TrackSort {
     #[default]
     Title,
@@ -271,12 +271,23 @@ impl Accent {
     }
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Deserialize, Serialize)]
 pub enum Repeat {
     #[default]
     Off,
     Queue,
     Track,
+}
+
+impl Repeat {
+    /// The mode the repeat button switches to: off, then the queue, then the track.
+    pub fn next(self) -> Self {
+        match self {
+            Self::Off => Self::Queue,
+            Self::Queue => Self::Track,
+            Self::Track => Self::Off,
+        }
+    }
 }
 
 impl Playlist {
@@ -1012,6 +1023,157 @@ mod tests {
         assert!(scan_root(&directory.path().join("Unplugged")).is_none());
         assert_eq!(library.sync_roots(&[]), (0, 0));
         assert_eq!(library.tracks.len(), 3);
+    }
+
+    fn queue_of(names: &[&str]) -> Vec<PathBuf> {
+        names.iter().map(PathBuf::from).collect()
+    }
+
+    #[test]
+    fn moving_rows_around_the_current_track_keeps_it_and_its_position() {
+        let mut library = Library {
+            queue: queue_of(&["a", "b", "c", "d", "e"]),
+            current: 2,
+            position_ms: 9000,
+            ..Library::default()
+        };
+        // A row from before the current track moves after it, and back.
+        assert!(library.move_queue_track(0, 4));
+        assert_eq!(library.queue, queue_of(&["b", "c", "d", "e", "a"]));
+        assert_eq!(library.queue[library.current], PathBuf::from("c"));
+        assert!(library.move_queue_track(4, 0));
+        assert_eq!(library.queue[library.current], PathBuf::from("c"));
+        // Rows on one side of the current track do not move it.
+        assert!(library.move_queue_track(3, 4));
+        assert_eq!(library.current, 2);
+        // The current track itself can be moved.
+        assert!(library.move_queue_track(2, 0));
+        assert_eq!((library.current, library.position_ms), (0, 9000));
+        assert_eq!(library.queue[0], PathBuf::from("c"));
+        // Moves to the same row or outside the queue change nothing.
+        let before = library.queue.clone();
+        assert!(!library.move_queue_track(1, 1));
+        assert!(!library.move_queue_track(0, 5));
+        assert!(!library.move_queue_track(7, 0));
+        assert_eq!(library.queue, before);
+        assert_eq!(library.current, 0);
+    }
+
+    #[test]
+    fn repeat_button_cycles_off_queue_track() {
+        assert_eq!(Repeat::Off.next(), Repeat::Queue);
+        assert_eq!(Repeat::Queue.next(), Repeat::Track);
+        assert_eq!(Repeat::Track.next(), Repeat::Off);
+    }
+
+    #[test]
+    fn repeat_modes_decide_what_follows_the_ends_of_the_queue() {
+        let mut library = Library {
+            queue: queue_of(&["a", "b", "c"]),
+            current: 2,
+            ..Library::default()
+        };
+        // Off: the queue ends at either edge.
+        assert_eq!(library.next_index(1, true), None);
+        assert_eq!(library.next_index(1, false), None);
+        library.current = 0;
+        assert_eq!(library.next_index(-1, false), None);
+        assert_eq!(library.next_index(1, true), Some(1));
+        // Queue: the ends wrap around.
+        library.repeat = Repeat::Queue;
+        assert_eq!(library.next_index(-1, false), Some(2));
+        library.current = 2;
+        assert_eq!(library.next_index(1, true), Some(0));
+        // Track: the track repeats on its own, and skipping still moves and wraps.
+        library.repeat = Repeat::Track;
+        assert_eq!(library.next_index(1, true), Some(2));
+        assert_eq!(library.next_index(1, false), None);
+        library.current = 1;
+        assert_eq!(library.next_index(-1, false), Some(0));
+        // Shuffled, the same rules follow the shuffled order.
+        library.shuffle = true;
+        library.shuffle_order = vec![2, 0, 1];
+        library.repeat = Repeat::Off;
+        assert_eq!(library.next_index(1, true), None);
+        library.repeat = Repeat::Queue;
+        assert_eq!(library.next_index(1, true), Some(2));
+    }
+
+    #[test]
+    fn adding_tracks_to_the_end_appends_copies_and_keeps_the_current_track() {
+        let mut library = Library {
+            queue: queue_of(&["a", "b"]),
+            current: 1,
+            position_ms: 400,
+            ..Library::default()
+        };
+        library.insert_queue_tracks(None, queue_of(&["a", "c"]));
+        assert_eq!(library.queue, queue_of(&["a", "b", "a", "c"]));
+        assert_eq!((library.current, library.position_ms), (1, 400));
+        assert_eq!(library.next_index(1, true), Some(2));
+        // Nothing to add changes nothing.
+        library.insert_queue_tracks(None, Vec::new());
+        assert_eq!(library.queue.len(), 4);
+
+        // Shuffled, the copies play after everything already in the shuffled order.
+        let mut shuffled = Library {
+            queue: queue_of(&["a", "b", "c"]),
+            current: 0,
+            shuffle: true,
+            shuffle_order: vec![2, 0, 1],
+            ..Library::default()
+        };
+        shuffled.insert_queue_tracks(None, queue_of(&["b"]));
+        assert_eq!(shuffled.queue, queue_of(&["a", "b", "c", "b"]));
+        assert_eq!(shuffled.shuffle_order, [2, 0, 1, 3]);
+        assert_eq!(shuffled.current, 0);
+    }
+
+    #[test]
+    fn removing_selected_rows_keeps_or_replaces_the_current_track() {
+        let mut library = Library {
+            queue: queue_of(&["a", "b", "c", "d", "e"]),
+            current: 3,
+            position_ms: 700,
+            queue_playlist: Some(0),
+            playlists: vec![Playlist {
+                name: "Mix".to_owned(),
+                tracks: queue_of(&["a"]),
+            }],
+            ..Library::default()
+        };
+        // Rows before the current track shift it back without stopping it.
+        assert!(!library.remove_queue_tracks(&BTreeSet::from([0, 2])));
+        assert_eq!(library.queue, queue_of(&["b", "d", "e"]));
+        assert_eq!((library.current, library.position_ms), (1, 700));
+        // Removing the current track moves to the next row and starts it over.
+        assert!(library.remove_queue_tracks(&BTreeSet::from([1])));
+        assert_eq!(library.queue, queue_of(&["b", "e"]));
+        assert_eq!((library.current, library.position_ms), (1, 0));
+        // Removing the last row, while current, falls back to the row before it.
+        assert!(library.remove_queue_tracks(&BTreeSet::from([1])));
+        assert_eq!(library.current, 0);
+        assert_eq!(library.queue_playlist, Some(0));
+        // An empty queue no longer belongs to a playlist.
+        assert!(library.remove_queue_tracks(&BTreeSet::from([0])));
+        assert!(library.queue.is_empty());
+        assert_eq!(library.queue_playlist, None);
+    }
+
+    #[test]
+    fn removing_the_current_track_while_shuffled_follows_the_shuffled_order() {
+        let mut library = Library {
+            queue: queue_of(&["a", "b", "c", "d"]),
+            current: 1,
+            shuffle: true,
+            shuffle_order: vec![3, 1, 0, 2],
+            ..Library::default()
+        };
+        assert!(library.remove_queue_tracks(&BTreeSet::from([1, 3])));
+        assert_eq!(library.queue, queue_of(&["a", "c"]));
+        // "a" came after "b" in the shuffled order, so it plays next.
+        assert_eq!(library.queue[library.current], PathBuf::from("a"));
+        assert_eq!(library.shuffle_order, [0, 1]);
     }
 
     #[test]

@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.3.3" date="2026-11-21">
+      <description>
+        <p>The interface is drawn with the graphics card by default. Turning off "Draw the interface with the graphics card" in Preferences draws it in software again, which uses less memory.</p>
+      </description>
+    </release>
     <release version="0.3.2" date="2026-11-21">
       <description>
         <p>The sidebar is wide enough again for every page name, such as "Listas de reprodução" in Portuguese.</p>

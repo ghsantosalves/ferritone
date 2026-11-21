@@ -77,13 +77,13 @@ fn wants_gpu_rendering() -> bool {
         .ok()
         .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
         .and_then(|library| library.get("gpu_rendering")?.as_bool())
-        .unwrap_or(false)
+        .unwrap_or(true)
 }
 
 fn main() -> glib::ExitCode {
     // GTK's GPU renderers keep around 40-150 MB of driver and texture memory, while drawing a
-    // music player's interface in software costs about the same CPU. Software is the default
-    // unless the user asks for the GPU in Preferences or sets GSK_RENDERER themselves.
+    // music player's interface in software costs about the same CPU. The GPU is the default;
+    // software is used when the user turns it off in Preferences, unless GSK_RENDERER is set.
     if std::env::var_os("GSK_RENDERER").is_none() && !wants_gpu_rendering() {
         // SAFETY: this runs first in main, before GTK, GStreamer, or any other thread starts.
         unsafe { std::env::set_var("GSK_RENDERER", "cairo") };

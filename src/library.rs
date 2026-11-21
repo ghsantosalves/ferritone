@@ -46,11 +46,22 @@ pub struct Library {
     /// Lets the screen blank and lock while music plays; off keeps it on.
     pub allow_screen_lock: bool,
     /// Draws the interface with the GPU, which is smoother on some screens but uses more memory.
-    pub gpu_rendering: bool,
+    pub gpu_rendering: GpuRendering,
     pub listenbrainz_enabled: bool,
     pub listenbrainz_token: String,
     /// Listens not yet accepted by ListenBrainz, oldest first.
     pub pending_listens: Vec<crate::listenbrainz::Listen>,
+}
+
+/// Whether GTK draws with the GPU; on unless the user turns it off.
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(transparent)]
+pub struct GpuRendering(pub bool);
+
+impl Default for GpuRendering {
+    fn default() -> Self {
+        Self(true)
+    }
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize)]

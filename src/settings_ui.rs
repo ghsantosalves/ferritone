@@ -785,8 +785,8 @@ impl Player {
                 "Draw the interface with the graphics card",
                 "Desenhar a interface com a placa de vídeo",
             ),
-            self.state.borrow().gpu_rendering,
-            |player, active| player.state.borrow_mut().gpu_rendering = active,
+            self.state.borrow().gpu_rendering.0,
+            |player, active| player.state.borrow_mut().gpu_rendering.0 = active,
         );
         gpu.set_subtitle(self.text(
             "Uses about 50 to 150 MB more memory. Takes effect after reopening Ferritone.",

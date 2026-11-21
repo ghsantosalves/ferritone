@@ -926,6 +926,16 @@ impl Player {
         self.css.load_from_data(&colors);
     }
 
+    /// Widens the sidebar to its longest page name, such as "Listas de reprodução", within
+    /// limits, so names are not cut off; the split view would otherwise keep its minimum width.
+    pub(crate) fn fit_sidebar_width(&self) {
+        let natural = self.sidebar.measure(gtk::Orientation::Horizontal, -1).1;
+        let width = f64::from(natural).clamp(172.0, 260.0);
+        if self.split_view.min_sidebar_width() != width {
+            self.split_view.set_min_sidebar_width(width);
+        }
+    }
+
     pub(crate) fn fit_sidebar(&self) {
         // A narrow window folds the sidebar away; it opens over the page from the header.
         let visible = self.state.borrow().view.sidebar && !self.split_view.is_collapsed();

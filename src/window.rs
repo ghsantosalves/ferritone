@@ -730,6 +730,7 @@ fn connect_navigation(
                 player.text("Playback position", "Posição da reprodução"),
             ));
             player.window.set_title(Some(APP_NAME));
+            player.fit_sidebar_width();
         }
     };
     refresh_navigation();

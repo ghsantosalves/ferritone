@@ -53,6 +53,11 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.2.13" date="2026-11-21">
+      <description>
+        <p>The remote's search looks in the open tab: the queue, the library or the playlists. The search bar stays above the phone's keyboard.</p>
+      </description>
+    </release>
     <release version="0.2.12" date="2026-11-21">
       <description>
         <p>The remote's search opens as a bar docked at the bottom of the screen, like the desktop's Ctrl+F, with the matches just above it.</p>

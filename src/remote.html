@@ -144,15 +144,13 @@
   .tabs button svg { width: 20px; height: 20px; }
   .tabs button.on { background: var(--raised); color: var(--text); }
   .tabs button.on svg { color: var(--accent); }
-  /* The library's search field stays at the top of the screen while the list scrolls. */
-  .search { position: sticky; top: max(10px, env(safe-area-inset-top)); z-index: 15; margin-bottom: 10px; display: none;
-    border-radius: 14px; transition: box-shadow .2s ease; }
-  .search.stuck { box-shadow: 0 10px 28px rgb(0 0 0 / 34%), 0 1px 4px rgb(0 0 0 / 20%); }
-  .search.stuck input { background: color-mix(in srgb, var(--surface) 97%, transparent);
-    backdrop-filter: blur(16px) saturate(1.2); -webkit-backdrop-filter: blur(16px) saturate(1.2); }
-  /* Floating buttons for long lists: back to the player, and a way to the library's search. */
-  .fabs { position: fixed; z-index: 20; display: flex; flex-direction: column; gap: 12px;
-    right: max(16px, calc((100vw - 540px) / 2 + 16px)); bottom: max(20px, calc(env(safe-area-inset-bottom) + 12px));
+  .search { position: relative; margin-bottom: 10px; display: none; }
+  svg.stroke { fill: none !important; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  /* Floating buttons for long lists: search right there, and back up to the player. The column
+     rises above the phone's keyboard (--keyboard is set from the visual viewport). */
+  .fabs { position: fixed; z-index: 20; display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+    right: max(16px, calc((100vw - 540px) / 2 + 16px));
+    bottom: calc(max(20px, calc(env(safe-area-inset-bottom) + 12px)) + var(--keyboard, 0px));
     opacity: 0; transform: translateY(16px) scale(.9); pointer-events: none;
     transition: opacity .2s ease, transform .25s cubic-bezier(.2, .8, .2, 1); }
   .fabs.shown { opacity: 1; transform: none; pointer-events: auto; }
@@ -164,6 +162,17 @@
   .fab.primary { background: var(--accent); color: var(--accent-text); }
   .fab svg { width: 24px; height: 24px; fill: currentColor; }
   .fab:active { transform: scale(.92); }
+  .fab-row { display: flex; align-items: center; gap: 10px; }
+  .float-search { position: relative; width: 0; opacity: 0; overflow: hidden; pointer-events: none;
+    transition: width .28s cubic-bezier(.2, .8, .2, 1), opacity .2s ease; }
+  .float-search.open { width: min(calc(100vw - 112px), 428px); opacity: 1; pointer-events: auto; }
+  .float-search svg { z-index: 1; position: absolute; left: 16px; top: 50%; width: 19px; height: 19px; translate: 0 -50%; color: var(--muted); }
+  .float-search input { width: 100%; height: 50px; border-radius: 25px; border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    background: color-mix(in srgb, var(--surface) 96%, transparent); color: var(--text); font: inherit;
+    padding: 0 16px 0 46px; outline: none; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 30%), 0 1px 3px rgb(0 0 0 / 20%); }
+  .float-search input::placeholder { color: var(--muted); }
+  .float-search input::-webkit-search-cancel-button { display: none; }
   .search svg { z-index: 1; position: absolute; left: 14px; top: 50%; width: 18px; height: 18px; translate: 0 -50%; color: var(--muted); }
   .search input { width: 100%; height: 44px; border-radius: 14px; border: 1px solid transparent; background: var(--surface);
     color: var(--text); font: inherit; padding: 0 14px 0 42px; outline: none; transition: border-color .2s; }
@@ -258,13 +267,16 @@
   <button id="tab-playlists"><svg viewBox="0 0 24 24"><path d="M15 6H3v2h12zm0 4H3v2h12zM3 16h8v-2H3zM17 6v8.18A3 3 0 0 0 16 14a3 3 0 1 0 3 3V8h3V6z"/></svg><span></span></button>
 </div>
 <div class="search" id="search-box">
-  <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 14 15.5l.27.28v.79l5 4.99L20.49 19zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg>
+  <svg class="stroke" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.2"/><path d="M15.2 15.2 20 20"/></svg>
   <input id="search" type="search" autocomplete="off" enterkeyhint="search">
 </div>
 <ul id="list"></ul>
 <div class="footer"><a id="shortcut"><svg viewBox="0 0 24 24"><path d="M17 1.01 7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14zm-4.2-5.78v1.75l3.2-2.99L12.8 9v1.7c-3.11.43-4.35 2.56-4.8 4.7 1.11-1.5 2.58-2.18 4.8-2.18z"/></svg><span id="shortcut-label"></span></a></div>
 <div class="fabs" id="fabs">
-  <button class="fab primary" id="fab-search"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 14 15.5l.27.28v.79l5 4.99L20.49 19zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z"/></svg></button>
+  <div class="fab-row">
+    <div class="float-search" id="float-search"><svg class="stroke" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.2"/><path d="M15.2 15.2 20 20"/></svg><input id="float-input" type="search" autocomplete="off" enterkeyhint="search"></div>
+    <button class="fab primary" id="fab-search"><svg class="stroke" viewBox="0 0 24 24"><path id="fab-search-icon" d=""/></svg></button>
+  </div>
   <button class="fab" id="fab-top"><svg viewBox="0 0 24 24"><path d="M4 12l1.41 1.41L11 7.83V20h2V7.83l5.58 5.59L20 12l-8-8-8 8z"/></svg></button>
 </div>
 <audio id="audio" preload="auto"></audio>
@@ -272,28 +284,28 @@
 "use strict";
 const token = new URLSearchParams(location.search).get("t") || "";
 const words = {
-  en: { top: "Back to top", lyrics: "Lyrics", noLyrics: "No lyrics for this track.", fullscreen: "Full screen", browserShortcut: "Browser shortcut", shortcut: "Home screen shortcut", queue: "Queue", library: "Library", playlists: "Playlists", nothing: "Nothing playing",
+  en: { searchShort: "Search the library", top: "Back to top", lyrics: "Lyrics", noLyrics: "No lyrics for this track.", fullscreen: "Full screen", browserShortcut: "Browser shortcut", shortcut: "Home screen shortcut", queue: "Queue", library: "Library", playlists: "Playlists", nothing: "Nothing playing",
         emptyQueue: "The queue is empty.", emptyPlaylists: "No saved playlists.", emptyLibrary: "The library is empty.",
         noMatches: "No matching tracks.", search: "Search tracks, artists and albums", more: "Show more",
         tracks: n => n === 1 ? "1 track" : n + " tracks", playOn: "Play on", pc: "Computer", phone: "Remote",
         offline: "Can't reach Ferritone. Check that it is open and on the same Wi-Fi network.",
         unsupported: "This browser can't play this file's format, so it was skipped.",
         blocked: "Tap play to start the sound on this device." },
-  pt: { top: "Voltar ao topo", lyrics: "Letra", noLyrics: "Sem letra para esta faixa.", fullscreen: "Tela cheia", browserShortcut: "Atalho no navegador", shortcut: "Atalho na tela inicial", queue: "Fila", library: "Biblioteca", playlists: "Listas de reprodução", nothing: "Nenhuma faixa",
+  pt: { searchShort: "Buscar na biblioteca", top: "Voltar ao topo", lyrics: "Letra", noLyrics: "Sem letra para esta faixa.", fullscreen: "Tela cheia", browserShortcut: "Atalho no navegador", shortcut: "Atalho na tela inicial", queue: "Fila", library: "Biblioteca", playlists: "Listas de reprodução", nothing: "Nenhuma faixa",
         emptyQueue: "A fila está vazia.", emptyPlaylists: "Nenhuma lista de reprodução salva.", emptyLibrary: "A biblioteca está vazia.",
         noMatches: "Nenhuma faixa encontrada.", search: "Buscar faixas, artistas e álbuns", more: "Mostrar mais",
         tracks: n => n === 1 ? "1 faixa" : n + " faixas", playOn: "Tocar no", pc: "Computador", phone: "Remoto",
         offline: "Não foi possível falar com o Ferritone. Confira se ele está aberto e na mesma rede Wi-Fi.",
         unsupported: "Este navegador não toca o formato deste arquivo, então ele foi pulado.",
         blocked: "Toque no play para começar o som neste aparelho." },
-  es: { top: "Volver arriba", lyrics: "Letra", noLyrics: "No hay letra para esta pista.", fullscreen: "Pantalla completa", browserShortcut: "Acceso en el navegador", shortcut: "Acceso en la pantalla de inicio", queue: "Cola", library: "Biblioteca", playlists: "Listas", nothing: "Nada en reproducción",
+  es: { searchShort: "Buscar en la biblioteca", top: "Volver arriba", lyrics: "Letra", noLyrics: "No hay letra para esta pista.", fullscreen: "Pantalla completa", browserShortcut: "Acceso en el navegador", shortcut: "Acceso en la pantalla de inicio", queue: "Cola", library: "Biblioteca", playlists: "Listas", nothing: "Nada en reproducción",
         emptyQueue: "La cola está vacía.", emptyPlaylists: "No hay listas guardadas.", emptyLibrary: "La biblioteca está vacía.",
         noMatches: "No hay pistas que coincidan.", search: "Buscar pistas, artistas y álbumes", more: "Mostrar más",
         tracks: n => n === 1 ? "1 pista" : n + " pistas", playOn: "Reproducir en", pc: "Ordenador", phone: "Remoto",
         offline: "No se puede conectar con Ferritone. Comprueba que esté abierto y en la misma red Wi-Fi.",
         unsupported: "Este navegador no reproduce el formato de este archivo, así que se ha saltado.",
         blocked: "Toca reproducir para empezar el sonido en este dispositivo." },
-  fr: { top: "Revenir en haut", lyrics: "Paroles", noLyrics: "Pas de paroles pour cette piste.", fullscreen: "Plein écran", browserShortcut: "Raccourci dans le navigateur", shortcut: "Raccourci sur l’écran d’accueil", queue: "File d’attente", library: "Bibliothèque", playlists: "Listes", nothing: "Aucune lecture",
+  fr: { searchShort: "Chercher", top: "Revenir en haut", lyrics: "Paroles", noLyrics: "Pas de paroles pour cette piste.", fullscreen: "Plein écran", browserShortcut: "Raccourci dans le navigateur", shortcut: "Raccourci sur l’écran d’accueil", queue: "File d’attente", library: "Bibliothèque", playlists: "Listes", nothing: "Aucune lecture",
         emptyQueue: "La file est vide.", emptyPlaylists: "Aucune liste enregistrée.", emptyLibrary: "La bibliothèque est vide.",
         noMatches: "Aucune piste correspondante.", search: "Rechercher pistes, artistes et albums", more: "Afficher plus",
         tracks: n => n === 1 ? "1 piste" : n + " pistes", playOn: "Lire sur", pc: "Ordinateur", phone: "Distant",
@@ -305,7 +317,7 @@ const ICONS = {
   note: "M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z",
   list: "M15 6H3v2h12zm0 4H3v2h12zM3 16h8v-2H3zM17 6v8.18A3 3 0 0 0 16 14a3 3 0 1 0 3 3V8h3V6z",
   play: "M8 5v14l11-7z",
-  search: "M15.5 14h-.79l-.28-.27A6.5 6.5 0 1 0 14 15.5l.27.28v.79l5 4.99L20.49 19zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9z",
+  search: "M10 18a8 8 0 1 1 5.29-2l5.36 5.36-1.42 1.42-5.36-5.36A7.96 7.96 0 0 1 10 18zm0-2a6 6 0 1 0 0-12 6 6 0 0 0 0 12z",
 };
 const PAGE_SIZE = 200;
 const $ = id => document.getElementById(id);
@@ -597,7 +609,7 @@ function render() {
     $("tab-" + name).querySelector("span").textContent = w[name];
     $("tab-" + name).classList.toggle("on", tab === name);
   }
-  $("search").placeholder = w.search;
+  $("search").placeholder = w.search; $("float-input").placeholder = w.searchShort;
   for (const [id, label] of [["fab-search", w.search], ["fab-top", w.top]]) {
     $(id).title = label; $(id).setAttribute("aria-label", label);
   }
@@ -788,33 +800,48 @@ for (const name of ["queue", "library", "playlists"]) {
     placeFabs();
   };
 }
-$("search").oninput = () => {
-  query = $("search").value; shown = PAGE_SIZE; renderList();
-  // Typing from far down the list shows the results right below the floating field.
-  const box = $("search-box"), list = $("list");
-  if (list.getBoundingClientRect().top < box.getBoundingClientRect().bottom) {
-    window.scrollTo({ top: window.scrollY + list.getBoundingClientRect().top - box.getBoundingClientRect().bottom - 10 });
-  }
+// Typing in either search field filters the library; both show the same text.
+function search(text, from) {
+  query = text; shown = PAGE_SIZE;
+  if ($("search").value !== text) $("search").value = text;
+  if ($("float-input").value !== text) $("float-input").value = text;
+  renderList();
+  // From the floating field far down the list, bring the start of the results into view
+  // without going all the way back up to the player.
+  const list = $("list").getBoundingClientRect();
+  if (from === "float" && list.top < 0) window.scrollTo({ top: window.scrollY + list.top - 12 });
   placeFabs();
-};
-// The floating buttons appear once the lists reach the top of the screen.
+}
+$("search").oninput = () => search($("search").value, "inline");
+$("float-input").oninput = () => search($("float-input").value, "float");
+const SEARCH_ICON = "M10.5 4.3a6.2 6.2 0 1 1 0 12.4a6.2 6.2 0 1 1 0-12.4M15.2 15.2 20 20";
+const CLOSE_ICON = "M6 6l12 12M18 6 6 18";
+function floatOpen() { return $("float-search").classList.contains("open"); }
+// The floating buttons appear once the lists reach the top of the screen, and stay while
+// the floating search is open.
 function placeFabs() {
-  $("fabs").classList.toggle("shown", document.querySelector(".tabs").getBoundingClientRect().top < 0);
-  // The search field already floats in the library, so its button is only for the other tabs.
-  $("fab-search").hidden = tab === "library";
-  const box = $("search-box");
-  box.classList.toggle("stuck", tab === "library" &&
-    box.getBoundingClientRect().top <= parseFloat(getComputedStyle(box).top) + 1 && window.scrollY > 0);
+  $("fabs").classList.toggle("shown", floatOpen() || document.querySelector(".tabs").getBoundingClientRect().top < 0);
+  $("fab-search-icon").setAttribute("d", floatOpen() ? CLOSE_ICON : SEARCH_ICON);
 }
 window.addEventListener("scroll", placeFabs, { passive: true });
 window.addEventListener("resize", placeFabs);
+if (window.visualViewport) {
+  const lift = () => document.documentElement.style.setProperty("--keyboard",
+    Math.max(0, window.innerHeight - visualViewport.height - visualViewport.offsetTop) + "px");
+  visualViewport.addEventListener("resize", lift); visualViewport.addEventListener("scroll", lift);
+}
 $("fab-top").onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
 $("fab-search").onclick = () => {
-  $("tab-library").click();
-  $("search-box").scrollIntoView({ block: "start" });
+  if (floatOpen()) {
+    $("float-search").classList.remove("open"); $("float-input").blur();
+    if (query) search("", "close");
+    placeFabs();
+    return;
+  }
+  if (tab !== "library") $("tab-library").click();
+  $("float-search").classList.add("open");
   // Focusing inside the tap itself is what lets phones open the keyboard.
-  $("search").focus({ preventScroll: true });
-  $("search").select();
+  $("float-input").focus({ preventScroll: true });
   placeFabs();
 };
 setLyricsShown(showLyrics);

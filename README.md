@@ -1,6 +1,8 @@
 # Ferritone
 
-Ferritone is a Linux desktop music player written in Rust. It organizes local audio into a searchable library, saved playlists, and a playback queue you can resume after restarting the app.
+Ferritone is a Linux desktop music player written in Rust with GTK 4 and libadwaita. It organizes local audio into a searchable library, saved playlists, and a playback queue you can resume after restarting the app.
+
+![Ferritone's Home page with saved playlists and the playback bar](assets/screenshots/home.png)
 
 ## Install
 
@@ -12,91 +14,27 @@ sudo apt install ./ferritone_0.2.13-1.trixie1_amd64.deb
 
 Open **Ferritone** from the application menu. To update, install the `.deb` from a newer release the same way. To uninstall, run `sudo apt remove ferritone`.
 
-On other distributions, download the `.flatpak` file from the same release and install it with `flatpak install --user ./Ferritone-<version>-x86_64.flatpak`, or [build from source](#build).
+On other distributions, download the `.flatpak` file from the same release and install it with `flatpak install --user ./Ferritone-<version>-x86_64.flatpak`, or [build from source](docs/building.md).
 
-## Get started
+## Highlights
 
-- **Home** shows the first six saved playlists and lets you open a folder, add a folder to the library, or resume the last queue. Search from Home to find a playlist anywhere in the collection. Opening a folder replaces the queue and starts playback. Adding a folder to the library indexes its tracks without changing playback. Both actions include subfolders.
-- **Smart lists** on Home play the 100 most recently added tracks in the library, by file date, and, once you have listened to some music, the 100 most recently played and most played tracks. A track counts as played once it passes half its length or four minutes, whichever comes first.
-- **Library** lets you add multiple folders and browse or search by title, artist, or album. You can mix local folders and cloud folders mounted or synced to the computer. Ferritone keeps the library in step with its folders: it checks them when it starts and a few seconds after files are added, removed, or renamed while it is open. If a folder is missing, such as an unplugged drive, its tracks stay in the library until it is back. **Manage library** lists the folder roots and lets you hide or show them independently. You can re-add a previously imported folder to register it as a source without duplicating tracks. Right-click selected tracks to hide them from the library. Hidden tracks stay in existing playlists and the queue, and are excluded when starting a new shuffle from the library. Use **View** in the playback menu to choose the visible columns and hide or show the library buttons.
-- **Albums** shows the library as a grid of album covers, and **Artists** lists each artist with their album and track counts. Open an album to play it or add it to the queue; its tracks play in disc and track order. Albums are grouped by the album artist tag when present, so compilations stay together.
-- **Playlists** supports drag and drop for files and folders, local audio imports from M3U, M3U8, and PLS, and M3U8 export. Search saved playlists or search for tracks inside any open playlist. The active playlist and the currently playing row are marked. Right-click a saved playlist on Home or in Playlists to play it, add it to the queue, add tracks, rename it, export it, or delete it.
-- **Queue** shows the playback order and supports track search. Drag a track by its handle or use the arrow buttons to reorder it. Reordering keeps the current track and playback position. Right-click a track to add a copy to the end of the queue or remove the selected entries. The repeat button cycles through off, repeat queue, and repeat track. Tracks follow each other without a gap, so live albums and continuous mixes play as recorded.
-- **Track tables** sort when you click a column header. In the queue and playlists, the next click reverses the sort and the third restores the original order. Sorting these views keeps the playback sequence. Drag a header to move the column or drag its divider to resize it. Double-click a divider to fit the column to the tracks in the current list.
-- The **playback menu** opens the mini player, the 10-band equalizer with presets, and View settings. Use the mini player's three-dot menu to show album art, live waveforms, and lyrics independently. Ferritone saves the combination and waveform style. The line uses rounded curves. Bars and the mirrored wave respond to the average energy of the audio and recede gradually between beats. The visualizations settle when playback is paused. The main progress slider hides when space is limited. The time display stays visible if enabled.
-- **View** lets you search its options and controls the visibility of interface elements, including the sidebar, title bar icon, playlist buttons, and drop area. Playlist controls can be hidden in the overview and in individual playlists. When the overview drop area is hidden, you can still drop files onto the list to create or add to a playlist. Drag the top edge of the playback bar to resize its height or drag the divider next to the track information to resize its width.
-- **Preferences** lets you change the theme, color scheme, accent color, and language. The **Ferritone** theme uses charcoal and copper, **System** keeps Ferritone's look in the desktop's light or dark colors with the accent you choose, and **GNOME/Adwaita** leaves every color to libadwaita and the desktop's accent. In a narrow window the sidebar folds away behind a button in the header. Ferritone draws its interface in software by default, which uses far less memory than GTK's GPU renderers for about the same processor time; **Draw the interface with the graphics card** in **Preferences → Audio** switches back after a restart. With **Follow system** as the color scheme or accent, Ferritone follows the desktop's light or dark style and accent color, including when they change while it is open, inside or outside Flatpak. The remote control page uses the same colors. Ferritone follows the system language by default and includes English, Brazilian Portuguese, Spanish, and French. Other locales fall back to English.
+- A library of local and synced cloud folders, kept in step with the files, with album and artist pages.
+- Drag-and-drop playlists with M3U, M3U8, and PLS import and M3U8 export, and a queue that resumes where you left off.
+- Gapless playback, a 10-band equalizer, ReplayGain, a sleep timer, and a mini player with waveforms.
+- Synchronized lyrics from `.lrc` files or tags, with an optional [LRCLIB](https://lrclib.net) lookup.
+- A [phone remote](docs/remote.md) on your home network, with no internet service in between.
+- Optional [ListenBrainz](docs/listenbrainz.md) scrobbling, MPRIS desktop media controls, and a GNOME Shell dock extension.
+- Three looks: Ferritone's charcoal and copper, Ferritone in your desktop's colors, or plain GNOME/Adwaita. English, Brazilian Portuguese, Spanish, and French.
 
-Ferritone currently plays local audio. Direct playback from a web URL is not implemented. File format support depends on the installed GStreamer plugins.
+Ferritone plays local audio; file format support depends on the installed GStreamer plugins.
 
-## Track actions and shortcuts
+## Documentation
 
-Use **Ctrl+click** to toggle individual tracks or **Shift+click** to select a range in the displayed order. Right-click a selected track to act on the selection. The context menu includes track details, queue actions, the containing folder, metadata refresh, and clipboard actions. Queue and playlist edits change the list of entries. The audio files stay in place.
-
-Under **Preferences**, you can switch the small action icons and compact shortcut keycaps in context menus independently. When keycaps are off, shortcuts are shown as text.
-
-| Shortcut | Action |
-| --- | --- |
-| Ctrl+O / Ctrl+K | Open music files / open a folder |
-| Ctrl+Shift+O / Ctrl+Shift+K | Import a playlist / add a folder to the library |
-| Ctrl+Shift+B | Manage library |
-| Ctrl+F | Open search on the current page |
-| Ctrl+P / Alt+← / Alt+→ | Play or pause / previous track / next track |
-| Ctrl+E / Ctrl+M / Ctrl+Y | Equalizer / mini player / toggle lyrics |
-| Alt+I / Alt+Q / F6 | Track details / add to queue or remove within the queue / refresh metadata |
-| Ctrl+A / Ctrl+X / Ctrl+C | Select all visible tracks / cut / copy |
-| Ctrl+V / Ctrl+Shift+V / Delete | Paste after selection / paste at end / hide selected library tracks or remove selected queue and playlist entries |
-| Ctrl+Q | Close Ferritone |
-
-In narrow windows, Ferritone can temporarily hide secondary columns. **View** reflects their current visibility, and widening the window restores the saved column choices.
-
-Search matches names regardless of case or accents and shows the current result number and the total. Use the up and down arrows to highlight the previous or next match without starting playback. The arrows wrap at the ends. If you opened search with **Ctrl+F**, clicking outside the search controls closes the search and clears its filter.
-
-## Optional lyrics
-
-Enable **Lyrics** in **Preferences** or in the playback menu under **View**. You can also press **Ctrl+Y**. Ferritone looks for a UTF-8 `.lrc` file with the same name as the audio file in the same folder, then for lyrics embedded in the track's tags. The main player shows a single centered verse in a compact playback bar and adds the dimmed previous and next verses when space allows. Drag the top edge of the lyrics panel to resize it independently of the playback controls. A centered musical note marks the gaps between timed verses. The mini player's **Lyrics** panel reserves space for the timed excerpt so the window stays steady as verses change length. When timestamps are unavailable, the panel shows the full lyrics in a scrollable view.
-
-Drag the timed lyrics up or down in the main player or mini player. Release when the highlighted verse matches what you hear to align that verse with the current playback position. Ferritone saves the adjustment for that audio file. **Reset timing** in the lyrics context menu restores the original timestamps.
-
-Enable **Look up lyrics online** separately to search [LRCLIB](https://lrclib.net/docs) when local lyrics are unavailable. Ferritone sends the track title, artist, and available album and duration metadata. If the direct lookup has no synchronized lyrics, Ferritone tries looser searches: the title without version notes such as "(Remastered 2011)", "[Live]", or "feat.", the main artist, the title alone, and a free search, stopping at the first synchronized match. Titles and artists are compared without accents or punctuation, and "A & B", "A e B", and "A feat. B" all match A. When a track has no title or artist tags, Ferritone uses names like "Artist - Title" in the file name or the Artist/Album folder layout. Online lyrics are synchronized when the recording's length is within two seconds, on any album; otherwise they are shown as plain text. Audio and file paths stay on the device. Both lyric options are off by default. Online results are kept in memory for the current session.
-
-## Sleep timer
-
-Open **Sleep timer** in the playback menu to pause playback after 15 to 90 minutes or at the end of the current track. A timed sleep lowers the volume gradually over the last 30 seconds, then pauses and restores the volume. Stopping at the end of a track leaves the next track ready, so **Play** continues from there.
-
-## ListenBrainz
-
-In **Preferences**, turn on **Submit listens to ListenBrainz** and paste the user token from your [ListenBrainz settings](https://listenbrainz.org/settings/); **Check token** confirms it. Ferritone then reports the track you are playing and, once you have played past half of it or four minutes, records the listen. It sends the artist, title, album, and length; file paths stay on the computer. Listens made while offline are kept and sent later. This option is off by default. Preferences shows whether the token works, the account it belongs to, how many listens ListenBrainz has recorded, and how many are waiting to be sent. Once connected, Home offers **Most played on ListenBrainz**, which plays your most played tracks from ListenBrainz's statistics that are in the library; ListenBrainz computes those statistics once a day.
-
-## Remote control
-
-Open **Remote control** in the playback menu and turn on **Allow remote control**. Scan the QR code with the camera of a phone or tablet to open a page in its browser that plays and pauses, skips tracks, seeks, changes the volume, shuffle, and repeat, and plays any track from the queue, the whole library (with search), or a saved playlist. **Open on this computer** opens the same page in the computer's browser. On a phone or tablet, **Home screen shortcut** at the bottom of the page shows how to add Ferritone to the home screen in Chrome on Android or Safari on iPhone and iPad; the shortcut has Ferritone's name and icon and keeps the access code. The phone or tablet must be on the same network as the computer; nothing goes through the internet.
-
-At the top of the page, **Play on** chooses where the sound comes from. **Computer** controls Ferritone as usual. **Remote** pauses the computer and streams the music to the phone or tablet's browser, starting where the computer was, with its lock-screen controls; switching back to **Computer** continues there from the remote device's track and position. The remote device plays the files as they are, so formats its browser cannot decode (FLAC on some older iPhones, for example) are skipped.
-
-While Ferritone is open, the same page is always available on the computer itself at <http://localhost:47123>, without a code and whether or not remote control is on. To open it by typing `ferritone` in your browser, click **Install browser shortcut** in **Preferences** and choose the browser: Ferritone copies the address and opens that browser with the few steps it needs. In Firefox, typing `ferritone` then opens the player; in Chrome and similar browsers, type `ferritone` and press Tab.
-
-Until you turn on remote control, Ferritone listens only on the computer itself. Once it is on, it also listens on the network, and requests from other devices must carry the secret code in the QR code link, so other devices cannot control playback. **New link** replaces the code and disconnects devices that have the old link. The remote stays on across restarts until you turn it off. The page loads nothing from the internet, and Ferritone refuses requests that other websites open in your browser try to send to it. It listens on port 47123, or on another free port if that one is taken; if the computer has a firewall, allow that port on your home network.
-
-## Desktop media controls
-
-Ferritone exposes track details and playback controls over MPRIS. In GNOME, open the clock and notifications panel to access the current track, play or pause, and skip tracks. Desktop media keys work on environments that route them to MPRIS players.
-
-Right-click Ferritone's icon in the dock or app grid for **Play/Pause**, **Previous Track**, and **Next Track**. If Ferritone is not running, choosing one of them opens it.
-
-To show these controls when you hover over Ferritone's icon in the dock, install the optional GNOME Shell extension in `extras/gnome-shell-dock-controls` (GNOME 48 and 49; works with Dash to Dock and Ubuntu Dock):
-
-```sh
-uuid=ferritone-dock-controls@ghsantosalves.github.io
-mkdir -p ~/.local/share/gnome-shell/extensions/$uuid
-cp extras/gnome-shell-dock-controls/* ~/.local/share/gnome-shell/extensions/$uuid/
-```
-
-Log out and back in, then run `gnome-extensions enable $uuid`. The controls use Ferritone's theme and accent color and follow them when you change them in **Preferences**. After updating the extension, log out and back in again so GNOME Shell loads the new version.
-
-While music plays, Ferritone keeps the screen from locking and the computer from sleeping. **Preferences → Audio** has a separate option for each, so you can let the screen lock and still keep the music from stopping.
-
-In **Preferences → Audio**, ReplayGain levels volume using embedded gain tags. **Track gain** suits mixed queues, and **Album gain** preserves the relative level of an album and falls back to track gain when needed. The optional peak protection caps boosting using the file's peak tag. Tracks without gain tags play at their original level.
+- [Using Ferritone](docs/usage.md): pages, queue, shortcuts, sleep timer, audio options, desktop controls, and where data is kept.
+- [Lyrics](docs/lyrics.md): local and online lyrics and timing adjustments.
+- [Remote control](docs/remote.md): the phone page, playing on the phone, and how access is protected.
+- [ListenBrainz](docs/listenbrainz.md): submitting listens and the most played list.
+- [Building and packaging](docs/building.md): desktop launcher, Flatpak, Debian package, releases, and the source layout.
 
 ## Build
 
@@ -115,74 +53,7 @@ cargo run --locked
 cargo test --locked
 ```
 
-## Install a desktop launcher
-
-Build and install the release binary, desktop entry, and icon for the current user. The desktop entry assumes that the desktop session can find `$HOME/.local/bin` on its executable search path.
-
-```sh
-cargo build --release --locked
-install -Dm755 target/release/rust-music-player "$HOME/.local/bin/rust-music-player"
-install -Dm644 assets/io.github.ghsantosalves.Ferritone.desktop "$HOME/.local/share/applications/io.github.ghsantosalves.Ferritone.desktop"
-install -Dm644 assets/player-icon.svg "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.ghsantosalves.Ferritone.svg"
-install -Dm644 LICENSE "$HOME/.local/share/doc/ferritone/LICENSE"
-```
-
-Open **Ferritone** from the application menu.
-
-Versions before 0.1.4 used the ID `io.github.rustmusicplayer.Player`. If you installed one of them this way, remove the old desktop entry and icon, then pin Ferritone to the dock again:
-
-```sh
-rm -f "$HOME/.local/share/applications/io.github.rustmusicplayer.Player.desktop" "$HOME/.local/share/icons/hicolor/scalable/apps/io.github.rustmusicplayer.Player.svg"
-```
-
-## Build the Flatpak
-
-With `flatpak-builder` and the Flathub remote, build and install the Flatpak for the current user:
-
-```sh
-flatpak-builder --user --install-deps-from=flathub --install --force-clean build-flatpak packaging/flatpak/io.github.ghsantosalves.Ferritone.yml
-flatpak run io.github.ghsantosalves.Ferritone
-```
-
-The Flatpak reads music anywhere in your home folder but cannot change it, and it keeps its library separately in `~/.var/app/io.github.ghsantosalves.Ferritone/`. After changing dependencies, regenerate the offline crate sources with `python3 packaging/flatpak/cargo-sources.py > packaging/flatpak/cargo-sources.json`.
-
-## Build the Debian package
-
-On Debian 13 amd64, with the build dependencies above plus `dpkg-dev`, run:
-
-```sh
-packaging/build-deb.sh
-```
-
-The package is written to `target/dist/`. It includes the AppStream metadata, desktop entry, icon, and the license notices of every bundled Rust crate.
-
-To publish a release, update the version in `Cargo.toml` and add a `<release>` entry to `assets/io.github.ghsantosalves.Ferritone.metainfo.xml`, then push a matching tag such as `v0.1.3`. The Release workflow builds the package on Debian 13 and opens a draft GitHub release with the `.deb`, a `.flatpak` bundle, `SHA256SUMS`, and notes taken from the metainfo entry. Run the workflow by hand from the Actions tab to test both builds without publishing. Review the draft and publish it.
-
-## Data and playlists
-
-Ferritone saves the library, playlists, last queue, and preferences in `$XDG_DATA_HOME/rust-music-player/library.json`, which defaults to `~/.local/share/rust-music-player/library.json`. While playing, the position is also saved every 30 seconds to `position.json` in the same folder, which is removed whenever the library is saved. The library references audio files where they are stored. Back up the JSON file to preserve Ferritone's state.
-
-M3U8 exports use relative paths for tracks below the export folder and absolute paths for other tracks. Keep the same folder structure when moving an exported playlist and its audio files together.
-
-## Source layout
-
-| Area | Files |
-| --- | --- |
-| Window setup, the `Player` state, and shared helpers | `src/main.rs` |
-| Pages, track tables, and search | `src/pages.rs`, `src/track_list.rs`, `src/search_ui.rs` |
-| Albums and artists, smart lists, and folder watching | `src/albums.rs`, `src/album_pages.rs`, `src/smart_lists.rs`, `src/library_watch.rs` |
-| Playback, the playback bar, and the current track | `src/transport.rs`, `src/now_playing.rs` |
-| Settings windows, file import and export | `src/settings_ui.rs`, `src/files.rs` |
-| Track skipping and autosave rules | `src/playback.rs` |
-| Mini player, waveform rendering, lyrics, and equalizer | `src/mini.rs`, `src/waveform.rs`, `src/lyrics.rs`, `src/equalizer.rs` |
-| Library state, tag reading, and playlist import | `src/library.rs`, `src/metadata.rs`, `src/playlist_file.rs` |
-| Library visibility controls | `src/library_view.rs` |
-| Track columns, themes, and translations | `src/table.rs`, `src/layout.css`, `src/style.css`, `src/i18n/` |
-| Track context menu and keyboard shortcuts | `src/track_menu.rs` |
-| Desktop media integration | `src/mpris.rs` |
-| ReplayGain and peak protection | `src/replay_gain.rs` |
-| Remote control server, page, and window | `src/remote.rs`, `src/remote.html`, `src/remote_ui.rs` |
-| Debian and Flatpak packaging | `packaging/` |
+See [Building and packaging](docs/building.md) for the desktop launcher, the Flatpak, and the Debian package.
 
 ## License
 

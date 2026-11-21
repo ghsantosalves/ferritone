@@ -14,7 +14,7 @@ impl Player {
         let token = {
             let mut state = self.state.borrow_mut();
             if state.remote_token.is_empty() {
-                state.remote_token = remote::new_token();
+                state.remote_token = remote::new_token()?;
             }
             state.remote_token.clone()
         };
@@ -455,7 +455,18 @@ impl Player {
                     let details = details.downgrade();
                     move |player| {
                         // A new token disconnects every phone that has the old link.
-                        player.state.borrow_mut().remote_token = remote::new_token();
+                        let token = match remote::new_token() {
+                            Ok(token) => token,
+                            Err(error) => {
+                                eprintln!("Could not make a new remote link: {error}");
+                                player.message(player.text(
+                                    "Could not make a new link: no secure random source is available.",
+                                    "Não foi possível criar um novo link: não há fonte aleatória segura disponível.",
+                                ));
+                                return;
+                            }
+                        };
+                        player.state.borrow_mut().remote_token = token;
                         player.save();
                         if let Err(error) = player.start_remote() {
                             eprintln!("Could not restart the phone remote: {error}");

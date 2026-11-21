@@ -20,7 +20,7 @@
   </replaces>
   <launchable type="desktop-id">io.github.ghsantosalves.Ferritone.desktop</launchable>
   <provides>
-    <binary>rust-music-player</binary>
+    <binary>ferritone</binary>
   </provides>
   <screenshots>
     <screenshot type="default">

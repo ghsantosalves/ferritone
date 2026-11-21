@@ -678,6 +678,7 @@ pub fn recently_added(tracks: &[PathBuf], limit: usize) -> Vec<PathBuf> {
 }
 
 pub fn data_path() -> PathBuf {
+    // Named after the package's first name; kept so existing libraries keep loading.
     gtk::glib::user_data_dir().join("rust-music-player/library.json")
 }
 

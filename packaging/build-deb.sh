@@ -28,7 +28,7 @@ package="$work/debian/ferritone"
 appid=io.github.ghsantosalves.Ferritone
 doc="$package/usr/share/doc/ferritone"
 
-install -Dm755 target/release/rust-music-player "$package/usr/bin/rust-music-player"
+install -Dm755 target/release/ferritone "$package/usr/bin/ferritone"
 install -Dm644 "assets/$appid.desktop" "$package/usr/share/applications/$appid.desktop"
 install -Dm644 "assets/$appid.metainfo.xml" "$package/usr/share/metainfo/$appid.metainfo.xml"
 install -Dm644 assets/player-icon.svg "$package/usr/share/icons/hicolor/scalable/apps/$appid.svg"
@@ -44,7 +44,7 @@ Source: ferritone
 Package: ferritone
 Architecture: any
 CONTROL
-depends=$(cd "$work" && env -u LD_LIBRARY_PATH dpkg-shlibdeps -O -e "$package/usr/bin/rust-music-player")
+depends=$(cd "$work" && env -u LD_LIBRARY_PATH dpkg-shlibdeps -O -e "$package/usr/bin/ferritone")
 depends=${depends#shlibs:Depends=}
 if [[ -z "$depends" ]]; then
     printf '%s\n' 'Unable to derive shared-library dependencies.' >&2

@@ -271,6 +271,7 @@
   <input id="search" type="search" autocomplete="off" enterkeyhint="search">
 </div>
 <ul id="list"></ul>
+<div id="search-spacer"></div>
 <div class="footer"><a id="shortcut"><svg viewBox="0 0 24 24"><path d="M17 1.01 7 1c-1.1 0-2 .9-2 2v18c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V3c0-1.1-.9-1.99-2-1.99zM17 19H7V5h10v14zm-4.2-5.78v1.75l3.2-2.99L12.8 9v1.7c-3.11.43-4.35 2.56-4.8 4.7 1.11-1.5 2.58-2.18 4.8-2.18z"/></svg><span id="shortcut-label"></span></a></div>
 <div class="fabs" id="fabs">
   <div class="fab-row">
@@ -806,10 +807,12 @@ function search(text, from) {
   if ($("search").value !== text) $("search").value = text;
   if ($("float-input").value !== text) $("float-input").value = text;
   renderList();
-  // From the floating field far down the list, bring the start of the results into view
-  // without going all the way back up to the player.
-  const list = $("list").getBoundingClientRect();
-  if (from === "float" && list.top < 0) window.scrollTo({ top: window.scrollY + list.top - 12 });
+  // From the floating field, the results move to the top of the screen, clear of the field at
+  // the bottom; the spacer below the list leaves room for that even with a single result.
+  if (from === "float") {
+    $("search-spacer").style.height = (window.visualViewport ? visualViewport.height : window.innerHeight) + "px";
+    window.scrollTo({ top: window.scrollY + $("list").getBoundingClientRect().top - 12 });
+  }
   placeFabs();
 }
 $("search").oninput = () => search($("search").value, "inline");
@@ -835,6 +838,7 @@ $("fab-search").onclick = () => {
   if (floatOpen()) {
     $("float-search").classList.remove("open"); $("float-input").blur();
     if (query) search("", "close");
+    $("search-spacer").style.height = "0px";
     placeFabs();
     return;
   }

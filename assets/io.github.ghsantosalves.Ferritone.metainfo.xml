@@ -26,22 +26,27 @@
     <screenshot type="default">
       <caption>Browse and search your music library</caption>
       <caption xml:lang="pt-BR">Navegue e busque na sua biblioteca de músicas</caption>
-      <image type="source" width="1100" height="700">https://raw.githubusercontent.com/ghsantosalves/ferritone/v0.1.4/assets/screenshots/library.png</image>
+      <image type="source" width="1040" height="670">https://raw.githubusercontent.com/ghsantosalves/ferritone/4fd30d5e38686ba08b7f1aecb6331cb94c9122a6/assets/screenshots/library.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Saved playlists and smart lists on the home page</caption>
+      <caption xml:lang="pt-BR">Listas salvas e listas automáticas na página inicial</caption>
+      <image type="source" width="1040" height="670">https://raw.githubusercontent.com/ghsantosalves/ferritone/4fd30d5e38686ba08b7f1aecb6331cb94c9122a6/assets/screenshots/home.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Albums as a grid of covers</caption>
+      <caption xml:lang="pt-BR">Álbuns em uma grade de capas</caption>
+      <image type="source" width="1040" height="670">https://raw.githubusercontent.com/ghsantosalves/ferritone/4fd30d5e38686ba08b7f1aecb6331cb94c9122a6/assets/screenshots/albums.png</image>
     </screenshot>
     <screenshot>
       <caption>Build playlists by dragging files and folders</caption>
       <caption xml:lang="pt-BR">Crie playlists arrastando arquivos e pastas</caption>
-      <image type="source" width="1100" height="700">https://raw.githubusercontent.com/ghsantosalves/ferritone/v0.1.4/assets/screenshots/playlist.png</image>
+      <image type="source" width="1040" height="670">https://raw.githubusercontent.com/ghsantosalves/ferritone/4fd30d5e38686ba08b7f1aecb6331cb94c9122a6/assets/screenshots/playlist.png</image>
     </screenshot>
     <screenshot>
-      <caption>Saved playlists and quick actions on the home page</caption>
-      <caption xml:lang="pt-BR">Playlists salvas e atalhos na página inicial</caption>
-      <image type="source" width="1100" height="700">https://raw.githubusercontent.com/ghsantosalves/ferritone/v0.1.4/assets/screenshots/home.png</image>
-    </screenshot>
-    <screenshot>
-      <caption>The mini player with album art</caption>
-      <caption xml:lang="pt-BR">O miniplayer com a capa do álbum</caption>
-      <image type="source" width="385" height="365">https://raw.githubusercontent.com/ghsantosalves/ferritone/v0.1.4/assets/screenshots/mini.png</image>
+      <caption>The mini player with synchronized lyrics</caption>
+      <caption xml:lang="pt-BR">O miniplayer com letras sincronizadas</caption>
+      <image type="source" width="385" height="385">https://raw.githubusercontent.com/ghsantosalves/ferritone/4fd30d5e38686ba08b7f1aecb6331cb94c9122a6/assets/screenshots/mini.png</image>
     </screenshot>
   </screenshots>
   <url type="homepage">https://github.com/ghsantosalves/ferritone</url>

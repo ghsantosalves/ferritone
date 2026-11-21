@@ -53,6 +53,14 @@
   </branding>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="0.3.0" date="2026-11-21">
+      <description>
+        <p>Ferritone now uses libadwaita. Preferences opens as a dialog, messages appear as toasts, and in a narrow window the sidebar folds away behind a button in the header.</p>
+        <p>A new GNOME/Adwaita theme leaves every color to the desktop, with a light, dark or follow-system color scheme. The Ferritone theme keeps its charcoal look and your accent color; the former System theme becomes GNOME/Adwaita.</p>
+        <p>Online lyrics and ListenBrainz no longer need curl. The phone remote's link always comes from a secure random source, and the remote limits how many connections it serves at once.</p>
+        <p>The program is now called ferritone; your library stays where it was.</p>
+      </description>
+    </release>
     <release version="0.2.13" date="2026-11-21">
       <description>
         <p>The remote's search looks in the open tab: the queue, the library or the playlists. The search bar stays above the phone's keyboard.</p>

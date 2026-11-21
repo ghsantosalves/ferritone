@@ -82,10 +82,13 @@
     mask-image: linear-gradient(transparent, #000 18%, #000 82%, transparent); }
   .lyrics::-webkit-scrollbar { display: none; }
   .cover.show-lyrics .lyrics { display: block; }
-  .lyrics p { margin: 0 0 14px; color: rgb(255 255 255 / 62%); font-size: 1rem; font-weight: 650; line-height: 1.35;
-    transition: color .35s, opacity .35s, transform .35s; }
-  .lyrics p.past { opacity: .5; }
-  .lyrics p.now { color: #fff; font-size: 1.16rem; font-weight: 800; }
+  /* Every line keeps the same size and weight, so changing lines never reflows the text; the current
+     one only brightens and grows a little through a transform. */
+  .lyrics p { margin: 0 0 14px; color: rgb(255 255 255 / 55%); font-size: 1.06rem; font-weight: 750; line-height: 1.35;
+    transform-origin: center; transform: scale(.94);
+    transition: color .45s ease, opacity .45s ease, transform .45s cubic-bezier(.2, .8, .2, 1); }
+  .lyrics p.past { opacity: .55; }
+  .lyrics p.now { color: #fff; transform: scale(1.04); }
   .lyrics .plain { white-space: pre-wrap; color: #fff; font-weight: 600; text-align: center; }
   .lyrics .missing { color: rgb(255 255 255 / 70%); margin-top: 20%; }
   .lyrics-badge { position: absolute; right: 10px; bottom: 10px; width: 32px; height: 32px; border-radius: 50%;
@@ -654,10 +657,29 @@ function drawLyrics() {
   }
 }
 // The computer's position is known once a second; between updates it is estimated.
+let lastEstimate = 0;
 function playbackPosition() {
   if (output === "phone") return audio.currentTime * 1000;
   if (!state) return 0;
-  return state.position_ms + (state.playing ? performance.now() - stateAt : 0);
+  let estimate = state.position_ms + (state.playing ? performance.now() - stateAt : 0);
+  // Each update from the computer can land a little behind the running estimate; small steps
+  // back are ignored so a line never flickers back and forth. Seeks and new tracks still apply.
+  if (state.playing && estimate < lastEstimate && lastEstimate - estimate < 700) estimate = lastEstimate;
+  lastEstimate = estimate;
+  return estimate;
+}
+// The browser's own smooth scrolling stutters on many phones, so the scroll is animated here.
+let scrollAnimation = 0;
+function glideTo(box, target) {
+  cancelAnimationFrame(scrollAnimation);
+  const from = box.scrollTop, distance = target - from, started = performance.now(), length = 650;
+  if (Math.abs(distance) < 1) return;
+  const step = now => {
+    const t = Math.min(1, (now - started) / length);
+    box.scrollTop = from + distance * (1 - Math.pow(1 - t, 3));
+    if (t < 1) scrollAnimation = requestAnimationFrame(step);
+  };
+  scrollAnimation = requestAnimationFrame(step);
 }
 function tickLyrics() {
   if (!showLyrics || lyricsData.kind !== "timed") return;
@@ -669,7 +691,7 @@ function tickLyrics() {
   const box = $("lyrics");
   [...box.children].forEach((p, i) => { p.classList.toggle("now", i === line); p.classList.toggle("past", i < line); });
   const current = box.children[Math.max(line, 0)];
-  if (current) box.scrollTo({ top: current.offsetTop - box.clientHeight / 2 + current.clientHeight / 2, behavior: "smooth" });
+  if (current) glideTo(box, current.offsetTop - box.clientHeight / 2 + current.clientHeight / 2);
 }
 function setLyricsShown(shown) {
   showLyrics = shown;
@@ -682,7 +704,7 @@ function setLyricsShown(shown) {
 }
 $("cover-box").onclick = () => setLyricsShown(!showLyrics);
 $("cover-box").onkeydown = event => { if (event.key === "Enter" || event.key === " ") setLyricsShown(!showLyrics); };
-setInterval(tickLyrics, 250);
+setInterval(tickLyrics, 100);
 function refresh() {
   fetchState()
     .then(() => { if (tab === "library" || local.src === "library") loadLibrary(); render(); })

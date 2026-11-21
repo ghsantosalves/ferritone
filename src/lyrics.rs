@@ -2,7 +2,7 @@ use std::{fs, path::Path, process::Command};
 
 use lofty::{config::ParseOptions, file::TaggedFileExt, probe::Probe, tag::ItemKey};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub enum Lyrics {
     #[default]
     Missing,

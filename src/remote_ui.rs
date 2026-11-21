@@ -265,6 +265,16 @@ impl Player {
                 *current = track.cloned();
             }
         }
+        if let Ok(mut shared) = self.remote_shared.current_lyrics.lock() {
+            let lyrics = self.lyrics.borrow();
+            let offset = track
+                .and_then(|track| state.lyric_offsets_ms.get(track))
+                .copied()
+                .unwrap_or(0);
+            if shared.0 != *lyrics || shared.1 != offset {
+                *shared = (lyrics.clone(), offset);
+            }
+        }
         let palette = self.palette();
         let Ok(mut snapshot) = self.remote_shared.snapshot.lock() else {
             return;

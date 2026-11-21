@@ -133,6 +133,9 @@ pub struct Shared {
     /// behind a queue that just changed.
     pub current_path: Mutex<Option<PathBuf>>,
     pub library: Mutex<LibraryList>,
+    /// The lyrics the computer shows for its current track, including ones found online, and
+    /// the user's timing adjustment for them in milliseconds.
+    pub current_lyrics: Mutex<(crate::lyrics::Lyrics, i32)>,
     /// The app icon as PNG at 192 and 512 pixels, for home screen shortcuts.
     pub icons: Mutex<Option<(Vec<u8>, Vec<u8>)>>,
 }
@@ -323,6 +326,20 @@ pub fn trusted_local(
     same_site && same_origin
 }
 
+/// Lyrics as the page reads them: timed lines with their times, or plain text.
+fn lyrics_json(lyrics: &crate::lyrics::Lyrics, offset_ms: i32) -> serde_json::Value {
+    use crate::lyrics::Lyrics;
+    match lyrics {
+        Lyrics::Timed(lines) => serde_json::json!({
+            "kind": "timed",
+            "offset_ms": offset_ms,
+            "lines": lines.iter().map(|(time, text)| serde_json::json!([time, text])).collect::<Vec<_>>(),
+        }),
+        Lyrics::Plain(text) => serde_json::json!({ "kind": "plain", "text": text }),
+        Lyrics::Missing => serde_json::json!({ "kind": "none" }),
+    }
+}
+
 /// Answers one request. Kept free of socket I/O so it can be tested.
 pub fn respond(
     request: &Request,
@@ -409,6 +426,29 @@ pub fn respond(
             })),
             Err(_) => Response::text("500 Internal Server Error", "Unavailable"),
         },
+        ("GET", "/api/lyrics") => {
+            // The computer's own lyrics include online results and the timing adjustment; for
+            // other tracks, or when the computer has none, read the file's lyrics here.
+            let current = (param(query, "src") == Some("current"))
+                .then(|| {
+                    shared
+                        .current_lyrics
+                        .lock()
+                        .ok()
+                        .map(|lyrics| lyrics.clone())
+                })
+                .flatten()
+                .filter(|(lyrics, _)| *lyrics != crate::lyrics::Lyrics::Missing);
+            let (lyrics, offset) = current.unwrap_or_else(|| {
+                (
+                    requested_file(query, shared)
+                        .map(|path| crate::lyrics::Lyrics::read(&path))
+                        .unwrap_or_default(),
+                    0,
+                )
+            });
+            Response::json(&lyrics_json(&lyrics, offset))
+        }
         ("GET", "/api/audio") => match requested_file(query, shared) {
             Some(path) => stream_file(path, range),
             None => Response::text("404 Not Found", "No such track"),

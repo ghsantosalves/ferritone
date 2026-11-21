@@ -3,6 +3,31 @@
 use super::*;
 
 impl Player {
+    /// Keeps the window from getting narrower than the page, the playback bar and the header
+    /// need. libadwaita lets a window with breakpoints shrink past its content, which then gets
+    /// cut off. The seek bar is left out because it hides on its own in narrow windows, and the
+    /// track table drops columns as the page narrows, so the minimum settles at the narrow layout.
+    pub(crate) fn fit_window_minimum(&self) {
+        let minimum = |widget: &gtk::Widget| widget.measure(gtk::Orientation::Horizontal, -1).0;
+        let mut transport = minimum(self.transport.upcast_ref());
+        if self.progress.get_visible() {
+            transport -= minimum(self.progress.upcast_ref()) + self.transport.spacing();
+        }
+        let header = self
+            .window
+            .content()
+            .and_downcast::<adw::ToolbarView>()
+            .and_then(|toolbar| toolbar.first_child())
+            .map_or(0, |bars| minimum(&bars));
+        let needed = [minimum(self.content.upcast_ref()), transport, header]
+            .into_iter()
+            .max()
+            .unwrap_or(0);
+        if needed > 0 && self.window.width_request() != needed {
+            self.window.set_width_request(needed);
+        }
+    }
+
     pub(crate) fn fit_transport(&self) {
         let view = self.state.borrow().view;
         let height = view.transport_height.clamp(0, 130);
@@ -381,6 +406,7 @@ impl Player {
             self.fit_transport();
             self.fit_search();
             self.fit_columns();
+            self.fit_window_minimum();
         }
     }
 

@@ -206,7 +206,7 @@ fn create_player(
         playlist_menu_delete: gtk::Button::new(),
         toasts: adw::ToastOverlay::new(),
         toast: RefCell::new(None),
-        preferences_dialog: glib::WeakRef::new(),
+        preferences_dialog: RefCell::new(None),
         now_playing,
         playing_artist,
         track_caption,
@@ -393,6 +393,19 @@ fn lay_out(
             &player.css,
             gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
+        // Drawn in software, a blurred shadow under a dialog costs a full frame on every step of
+        // its opening animation. A sharp, light shadow keeps the outline and the motion smooth.
+        if std::env::var("GSK_RENDERER").is_ok_and(|renderer| renderer == "cairo") {
+            let software = gtk::CssProvider::new();
+            software.load_from_data(
+                "dialog.floating sheet { box-shadow: 0 0 0 1px alpha(black, 0.15), 0 2px 0 alpha(black, 0.08); }",
+            );
+            gtk::style_context_add_provider_for_display(
+                &display,
+                &software,
+                gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            );
+        }
     }
     player.watch_desktop_appearance();
     player.apply_theme();
@@ -870,6 +883,7 @@ fn start(player: &Rc<Player>, load_error: Option<std::io::Error>) {
         ));
     }
     player.window.present();
+    player.prepare_preferences();
 }
 
 fn install_transport_resize(player: &Rc<Player>, strip: &gtk::Box, lyric_grip: &gtk::Box) {

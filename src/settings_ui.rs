@@ -404,21 +404,41 @@ impl Player {
         self.update_lyrics();
     }
 
-    /// Opens Preferences, or brings it forward when it is already open.
+    /// Opens Preferences, or does nothing when it is already open. The dialog is built once
+    /// and kept, so opening it only runs its animation.
     pub(crate) fn show_preferences(self: &Rc<Self>) {
-        if self.preferences_dialog.upgrade().is_some() {
-            return;
+        let dialog = self.preferences_dialog();
+        if dialog.parent().is_none() {
+            dialog.present(Some(&self.window));
+        }
+    }
+
+    /// The Preferences dialog, built the first time it is needed.
+    pub(crate) fn preferences_dialog(self: &Rc<Self>) -> adw::PreferencesDialog {
+        if let Some(dialog) = self.preferences_dialog.borrow().as_ref() {
+            return dialog.clone();
         }
         let dialog = adw::PreferencesDialog::new();
         dialog.set_title(self.text("Preferences", "Preferências"));
         dialog.add(&self.preferences_page());
-        self.preferences_dialog.set(Some(&dialog));
-        dialog.present(Some(&self.window));
+        self.preferences_dialog.replace(Some(dialog.clone()));
+        dialog
     }
 
-    /// Rebuilds open Preferences, after the language changes.
+    /// Builds Preferences while the window is idle, so the first opening does not wait for it.
+    pub(crate) fn prepare_preferences(self: &Rc<Self>) {
+        let weak = Rc::downgrade(self);
+        glib::idle_add_local_full(glib::Priority::LOW, move || {
+            if let Some(player) = weak.upgrade() {
+                player.preferences_dialog();
+            }
+            glib::ControlFlow::Break
+        });
+    }
+
+    /// Rebuilds Preferences in the new language.
     pub(crate) fn reopen_preferences(self: &Rc<Self>) {
-        let Some(dialog) = self.preferences_dialog.upgrade() else {
+        let Some(dialog) = self.preferences_dialog.borrow().clone() else {
             return;
         };
         let weak = Rc::downgrade(self);
@@ -518,35 +538,38 @@ impl Player {
             Accent::Violet => 3,
             Accent::Copper => 4,
         });
-        // Ferritone is always dark, and GNOME/Adwaita always takes the desktop's accent.
+        // Only the rows the theme uses are shown: Ferritone is always dark, and GNOME/Adwaita
+        // always takes the desktop's accent. The theme row says what the theme does.
         let fit_rows = {
-            let (scheme, accent) = (scheme.downgrade(), accent.downgrade());
+            let (theme, scheme, accent) =
+                (theme.downgrade(), scheme.downgrade(), accent.downgrade());
             let weak = Rc::downgrade(self);
             move || {
-                let (Some(player), Some(scheme), Some(accent)) =
-                    (weak.upgrade(), scheme.upgrade(), accent.upgrade())
-                else {
+                let (Some(player), Some(row), Some(scheme), Some(accent)) = (
+                    weak.upgrade(),
+                    theme.upgrade(),
+                    scheme.upgrade(),
+                    accent.upgrade(),
+                ) else {
                     return;
                 };
                 let theme = player.state.borrow().theme;
-                scheme.set_sensitive(!matches!(theme, Theme::Ferritone));
-                scheme.set_subtitle(if matches!(theme, Theme::Ferritone) {
-                    player.text(
-                        "The Ferritone theme is always dark.",
-                        "O tema Ferritone é sempre escuro.",
-                    )
-                } else {
-                    ""
+                row.set_subtitle(match theme {
+                    Theme::Ferritone => player.text(
+                        "Charcoal and copper, always dark.",
+                        "Carvão e cobre, sempre escuro.",
+                    ),
+                    Theme::Adwaita => player.text(
+                        "GNOME's own look, with the system accent color.",
+                        "O visual do próprio GNOME, com a cor de destaque do sistema.",
+                    ),
+                    Theme::System | Theme::Light | Theme::Dark => player.text(
+                        "Ferritone's look in the desktop's light or dark colors.",
+                        "O visual do Ferritone nas cores claras ou escuras do desktop.",
+                    ),
                 });
-                accent.set_sensitive(!matches!(theme, Theme::Adwaita));
-                accent.set_subtitle(if matches!(theme, Theme::Adwaita) {
-                    player.text(
-                        "GNOME/Adwaita uses the system accent color.",
-                        "O GNOME/Adwaita usa a cor de destaque do sistema.",
-                    )
-                } else {
-                    ""
-                });
+                scheme.set_visible(!matches!(theme, Theme::Ferritone));
+                accent.set_visible(!matches!(theme, Theme::Adwaita));
             }
         };
         fit_rows();

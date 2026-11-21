@@ -51,8 +51,8 @@ pub(crate) struct Player {
     pub(crate) toasts: adw::ToastOverlay,
     /// The message on screen, replaced by the next one.
     pub(crate) toast: RefCell<Option<adw::Toast>>,
-    /// The Preferences dialog while it is open.
-    pub(crate) preferences_dialog: glib::WeakRef<adw::PreferencesDialog>,
+    /// Preferences, built once and presented again each time.
+    pub(crate) preferences_dialog: RefCell<Option<adw::PreferencesDialog>>,
     pub(crate) now_playing: gtk::Label,
     pub(crate) playing_artist: gtk::Label,
     pub(crate) track_caption: gtk::Box,

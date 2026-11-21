@@ -500,6 +500,12 @@ pub fn open(player: &Rc<Player>) {
     volume.set_tooltip_text(Some(player.text("Volume", "Volume")));
     controls.append(&visual);
     controls.append(&volume);
+    // The play button is taller than the others; centering keeps the rest round.
+    let mut child = controls.first_child();
+    while let Some(widget) = child {
+        widget.set_valign(gtk::Align::Center);
+        child = widget.next_sibling();
+    }
     layout.append(&controls);
     window.set_child(Some(&layout));
 

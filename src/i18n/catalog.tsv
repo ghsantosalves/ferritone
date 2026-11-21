@@ -262,3 +262,9 @@ Looking up your most played tracks on ListenBrainz…	Buscando tus pistas más e
 None of your most played tracks on ListenBrainz are in the library yet.	Ninguna de tus pistas más escuchadas en ListenBrainz está todavía en la biblioteca.	Aucune de vos pistes les plus écoutées sur ListenBrainz n’est encore dans la bibliothèque.
 Listens recorded on ListenBrainz: {}.	Escuchas registradas en ListenBrainz: {}.	Écoutes enregistrées sur ListenBrainz : {}.
 ListenBrainz has not calculated your statistics yet. It does so once a day, so try again tomorrow.	ListenBrainz todavía no ha calculado tus estadísticas. Lo hace una vez al día, así que vuelve a intentarlo mañana.	ListenBrainz n’a pas encore calculé vos statistiques. Il le fait une fois par jour, réessayez demain.
+Status	Estado	État
+Theme	Tema	Thème
+System	Sistema	Système
+Color scheme	Esquema de colores	Jeu de couleurs
+The Ferritone theme is always dark.	El tema Ferritone siempre es oscuro.	Le thème Ferritone est toujours sombre.
+GNOME/Adwaita uses the system accent color.	GNOME/Adwaita usa el color de énfasis del sistema.	GNOME/Adwaita utilise la couleur d’accentuation du système.

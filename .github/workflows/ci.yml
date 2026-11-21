@@ -19,7 +19,7 @@ jobs:
           apt-get update
           apt-get install -y --no-install-recommends \
             ca-certificates git build-essential pkgconf cargo rustc rustfmt curl \
-            libglib2.0-dev-bin libgtk-4-dev libgstreamer1.0-dev \
+            libglib2.0-dev-bin libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev \
             gstreamer1.0-plugins-base gstreamer1.0-plugins-good
       - uses: actions/checkout@v7
       - uses: actions/cache@v6

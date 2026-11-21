@@ -9,6 +9,7 @@ license = "GPL-3.0-only"
 
 [dependencies]
 gtk = { package = "gtk4", version = "0.9", features = ["v4_10"] }
+adw = { package = "libadwaita", version = "0.7", features = ["v1_7"] }
 gst = { package = "gstreamer", version = "0.23" }
 lofty = "0.22"
 serde = { version = "1", features = ["derive"] }

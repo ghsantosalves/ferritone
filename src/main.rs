@@ -43,11 +43,12 @@ use std::{
     time::{Duration, Instant},
 };
 
+use adw::prelude::*;
 use gst::prelude::*;
-use gtk::{gdk, gio, glib, prelude::*};
+use gtk::{gdk, gio, glib};
 use library::{
-    Accent, Language, Library, Playlist, Repeat, Theme, TrackSort, ViewOptions, collect_tracks,
-    data_path, title,
+    Accent, ColorScheme, Language, Library, Playlist, Repeat, Theme, TrackSort, ViewOptions,
+    collect_tracks, data_path, title,
 };
 use metadata::{TrackInfo, read_cover_image, read_cover_thumbnail, read_track};
 use search::{SearchBar, SearchVisibility};
@@ -77,7 +78,6 @@ enum Page {
     Playlists,
     Queue,
     Playlist(usize),
-    Preferences,
 }
 
 #[derive(Clone, Copy)]
@@ -90,10 +90,12 @@ enum Import {
 }
 
 struct Player {
-    window: gtk::ApplicationWindow,
+    window: adw::ApplicationWindow,
     app_icon: gtk::Image,
     content: gtk::Box,
     sidebar: gtk::Box,
+    /// Holds the sidebar beside the pages, or over them in a narrow window.
+    split_view: adw::OverlaySplitView,
     /// The sidebar's page buttons, to mark the page on screen.
     sidebar_items: RefCell<Vec<(Page, gtk::Button)>>,
     navigation: gtk::MenuButton,
@@ -104,10 +106,12 @@ struct Player {
     playlist_query: RefCell<(Option<usize>, String)>,
     saved_playlist_query: RefCell<String>,
     playlist_menu_delete: gtk::Button,
-    status: gtk::Label,
-    /// The status message with its close button.
-    status_bar: gtk::Box,
-    status_timer: Rc<RefCell<Option<glib::SourceId>>>,
+    /// Shows short messages over the page.
+    toasts: adw::ToastOverlay,
+    /// The message on screen, replaced by the next one.
+    toast: RefCell<Option<adw::Toast>>,
+    /// The Preferences dialog while it is open.
+    preferences_dialog: glib::WeakRef<adw::PreferencesDialog>,
     now_playing: gtk::Label,
     playing_artist: gtk::Label,
     track_caption: gtk::Box,
@@ -115,8 +119,8 @@ struct Player {
     lyric_strip: gtk::CenterBox,
     lyric_lines: [gtk::Label; 5],
     mini_lyrics: gtk::Label,
-    lyrics_preference: glib::WeakRef<gtk::CheckButton>,
-    online_lyrics_preference: glib::WeakRef<gtk::CheckButton>,
+    lyrics_preference: glib::WeakRef<adw::SwitchRow>,
+    online_lyrics_preference: glib::WeakRef<adw::SwitchRow>,
     lyrics: RefCell<lyrics::Lyrics>,
     lyric_request: Cell<u64>,
     lyric_drag_preview: Cell<Option<u64>>,
@@ -150,8 +154,10 @@ struct Player {
     library_search: RefCell<String>,
     shuffle: gtk::ToggleButton,
     repeat: gtk::Button,
+    /// The theme's colors; empty for GNOME/Adwaita.
     css: gtk::CssProvider,
-    default_dark: bool,
+    /// Sizes and spacing, loaded for every theme.
+    layout_css: gtk::CssProvider,
     desktop_appearance: Option<gio::Settings>,
     /// The desktop's color scheme and accent as the settings portal last reported them.
     portal_color_scheme: Cell<Option<u32>>,
@@ -197,7 +203,7 @@ struct Player {
     listenbrainz_state: RefCell<scrobble::Connection>,
     /// Listens ListenBrainz accepted since Ferritone started.
     listens_sent: Cell<usize>,
-    listenbrainz_status: RefCell<Option<glib::WeakRef<gtk::Label>>>,
+    listenbrainz_status: RefCell<Option<glib::WeakRef<adw::ActionRow>>>,
     /// Watches the library folders for added and removed files.
     library_monitors: RefCell<Vec<gio::FileMonitor>>,
     selected_album: RefCell<albums::AlbumKey>,
@@ -239,17 +245,17 @@ fn main() -> glib::ExitCode {
         eprintln!("Could not register Ferritone resources: {error}");
         return glib::ExitCode::FAILURE;
     }
-    let app = gtk::Application::builder().application_id(APP_ID).build();
+    let app = adw::Application::builder().application_id(APP_ID).build();
     app.connect_activate(build);
     app.run()
 }
 
-fn build(app: &gtk::Application) {
+fn build(app: &adw::Application) {
     if let Some(window) = app.active_window() {
         window.present();
         return;
     }
-    let window = gtk::ApplicationWindow::builder()
+    let window = adw::ApplicationWindow::builder()
         .application(app)
         .title(APP_NAME)
         .icon_name(APP_ID)
@@ -297,42 +303,24 @@ fn build(app: &gtk::Application) {
     if let Some(replay_gain) = &replay_gain {
         replay_gain.apply(state.replay_gain);
     }
-    let titlebar = gtk::HeaderBar::new();
+    let titlebar = adw::HeaderBar::new();
     titlebar.add_css_class("compact-titlebar");
     let app_icon = gtk::Image::from_icon_name(APP_ID);
     app_icon.set_pixel_size(27);
     titlebar.pack_start(&app_icon);
+    let sidebar_toggle = gtk::ToggleButton::builder()
+        .icon_name("sidebar-show-symbolic")
+        .build();
+    titlebar.pack_start(&sidebar_toggle);
     let navigation = gtk::MenuButton::builder()
         .icon_name("open-menu-symbolic")
         .build();
     navigation.add_css_class("transport-menu");
-    window.set_titlebar(Some(&titlebar));
 
-    let layout = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let content = gtk::Box::new(gtk::Orientation::Vertical, 10);
     content.set_hexpand(true);
     content.set_vexpand(true);
     content.add_css_class("content");
-
-    let status = gtk::Label::new(None);
-    status.set_xalign(0.0);
-    status.set_wrap(true);
-    status.add_css_class("status");
-    status.set_hexpand(true);
-    let status_bar = gtk::Box::new(gtk::Orientation::Horizontal, 6);
-    status_bar.add_css_class("status-bar");
-    status_bar.set_visible(false);
-    status_bar.append(&status);
-    let close_status = gtk::Button::from_icon_name("window-close-symbolic");
-    close_status.add_css_class("flat");
-    close_status.set_valign(gtk::Align::Center);
-    let bar = status_bar.downgrade();
-    close_status.connect_clicked(move |_| {
-        if let Some(bar) = bar.upgrade() {
-            bar.set_visible(false);
-        }
-    });
-    status_bar.append(&close_status);
 
     let now_playing = gtk::Label::new(None);
     now_playing.add_css_class("playing-title");
@@ -385,14 +373,19 @@ fn build(app: &gtk::Application) {
     artwork_button.set_sensitive(false);
     let sidebar = gtk::Box::new(gtk::Orientation::Vertical, 8);
     sidebar.add_css_class("sidebar");
+    let split_view = adw::OverlaySplitView::builder()
+        .min_sidebar_width(172.0)
+        .max_sidebar_width(260.0)
+        .sidebar_width_fraction(0.0)
+        .build();
     let shuffle = gtk::ToggleButton::builder()
         .icon_name("media-playlist-shuffle-symbolic")
         .active(state.shuffle)
         .build();
     let repeat = gtk::Button::from_icon_name("media-playlist-repeat-symbolic");
     let css = gtk::CssProvider::new();
-    let default_dark = gtk::Settings::default()
-        .is_some_and(|settings| settings.is_gtk_application_prefer_dark_theme());
+    let layout_css = gtk::CssProvider::new();
+    layout_css.load_from_data(include_str!("layout.css"));
     let desktop_appearance = gio::SettingsSchemaSource::default()
         .and_then(|source| source.lookup("org.gnome.desktop.interface", true))
         .filter(|schema| schema.has_key("color-scheme"))
@@ -422,6 +415,7 @@ fn build(app: &gtk::Application) {
         app_icon,
         content,
         sidebar,
+        split_view,
         sidebar_items: RefCell::default(),
         navigation,
         columns: RefCell::new(None),
@@ -431,9 +425,9 @@ fn build(app: &gtk::Application) {
         playlist_query: RefCell::new((None, String::new())),
         saved_playlist_query: RefCell::new(String::new()),
         playlist_menu_delete: gtk::Button::new(),
-        status,
-        status_bar,
-        status_timer: Rc::default(),
+        toasts: adw::ToastOverlay::new(),
+        toast: RefCell::new(None),
+        preferences_dialog: glib::WeakRef::new(),
         now_playing,
         playing_artist,
         track_caption,
@@ -477,7 +471,7 @@ fn build(app: &gtk::Application) {
         shuffle,
         repeat,
         css,
-        default_dark,
+        layout_css,
         desktop_appearance,
         portal_color_scheme: Cell::new(None),
         portal_accent: Cell::new(None),
@@ -522,16 +516,36 @@ fn build(app: &gtk::Application) {
         applied_volume: Cell::new(0.7),
     });
 
-    let top = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    let body = gtk::Box::new(gtk::Orientation::Vertical, 0);
-    body.set_hexpand(true);
-    body.set_vexpand(true);
-    body.append(&player.status_bar);
-    body.append(&player.content);
-    top.set_vexpand(true);
-    top.append(&player.sidebar);
-    top.append(&body);
-    layout.append(&top);
+    player.split_view.set_sidebar(Some(&player.sidebar));
+    player.split_view.set_content(Some(&player.content));
+    player.split_view.set_vexpand(true);
+    player.toasts.set_child(Some(&player.split_view));
+    // In a narrow window the sidebar folds away and opens over the page from the header.
+    sidebar_toggle.set_tooltip_text(Some(player.text("Show sidebar", "Mostrar barra lateral")));
+    player
+        .split_view
+        .bind_property("collapsed", &sidebar_toggle, "visible")
+        .sync_create()
+        .build();
+    player
+        .split_view
+        .bind_property("show-sidebar", &sidebar_toggle, "active")
+        .sync_create()
+        .bidirectional()
+        .build();
+    let weak = Rc::downgrade(&player);
+    player.split_view.connect_collapsed_notify(move |_| {
+        if let Some(player) = weak.upgrade() {
+            player.fit_sidebar();
+        }
+    });
+    let narrow = adw::Breakpoint::new(adw::BreakpointCondition::new_length(
+        adw::BreakpointConditionLengthType::MaxWidth,
+        600.0,
+        adw::LengthUnit::Sp,
+    ));
+    narrow.add_setter(&player.split_view, "collapsed", Some(&true.to_value()));
+    player.window.add_breakpoint(narrow);
 
     let previous = gtk::Button::from_icon_name("media-skip-backward-symbolic");
     let next = gtk::Button::from_icon_name("media-skip-forward-symbolic");
@@ -570,11 +584,22 @@ fn build(app: &gtk::Application) {
     player.lyric_panel.append(&lyric_grip);
     player.lyric_panel.append(&player.lyric_strip);
     player.attach_lyric_sync(&player.lyric_strip);
-    layout.append(&player.lyric_panel);
-    layout.append(&resize_strip);
-    layout.append(&player.transport);
-    player.window.set_child(Some(&layout));
+    let playback_bar = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    playback_bar.append(&player.lyric_panel);
+    playback_bar.append(&resize_strip);
+    playback_bar.append(&player.transport);
+    let toolbar = adw::ToolbarView::new();
+    toolbar.add_top_bar(&titlebar);
+    toolbar.set_content(Some(&player.toasts));
+    toolbar.add_bottom_bar(&playback_bar);
+    player.window.set_content(Some(&toolbar));
     if let Some(display) = gdk::Display::default() {
+        // The theme's colors rank above the layout so they replace its plain fallbacks.
+        gtk::style_context_add_provider_for_display(
+            &display,
+            &player.layout_css,
+            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION - 1,
+        );
         gtk::style_context_add_provider_for_display(
             &display,
             &player.css,
@@ -634,8 +659,8 @@ fn build(app: &gtk::Application) {
                 navigation_separator.upcast_ref(),
             ] {
                 player
-                    .sidebar
-                    .bind_property("visible", widget, "visible")
+                    .split_view
+                    .bind_property("show-sidebar", widget, "visible")
                     .invert_boolean()
                     .sync_create()
                     .build();
@@ -646,35 +671,41 @@ fn build(app: &gtk::Application) {
             wordmark.add_css_class("wordmark");
             player.sidebar.append(&wordmark);
             player.sidebar_items.borrow_mut().clear();
+            // `None` opens Preferences, a dialog rather than a page.
             for (index, (page, en, pt, icon)) in [
-                (Page::Home, "Home", "Início", "go-home-symbolic"),
+                (Some(Page::Home), "Home", "Início", "go-home-symbolic"),
                 (
-                    Page::Library,
+                    Some(Page::Library),
                     "Library",
                     "Biblioteca",
                     "folder-music-symbolic",
                 ),
-                (Page::Albums, "Albums", "Álbuns", "media-optical-symbolic"),
                 (
-                    Page::Artists,
+                    Some(Page::Albums),
+                    "Albums",
+                    "Álbuns",
+                    "media-optical-symbolic",
+                ),
+                (
+                    Some(Page::Artists),
                     "Artists",
                     "Artistas",
                     "avatar-default-symbolic",
                 ),
                 (
-                    Page::Playlists,
+                    Some(Page::Playlists),
                     "Playlists",
                     "Listas de reprodução",
                     "view-list-symbolic",
                 ),
                 (
-                    Page::Queue,
+                    Some(Page::Queue),
                     "Queue",
                     "Fila",
                     "media-playlist-consecutive-symbolic",
                 ),
                 (
-                    Page::Preferences,
+                    None,
                     "Preferences",
                     "Preferências",
                     "preferences-system-symbolic",
@@ -683,7 +714,11 @@ fn build(app: &gtk::Application) {
             .into_iter()
             .enumerate()
             {
-                let item = button("", &player, move |player| player.show(page));
+                let open = move |player: &Rc<Player>| match page {
+                    Some(page) => player.show(page),
+                    None => player.show_preferences(),
+                };
+                let item = button("", &player, open);
                 let line = gtk::Box::new(gtk::Orientation::Horizontal, 10);
                 line.append(&gtk::Image::from_icon_name(icon));
                 let label = gtk::Label::new(Some(player.text(en, pt)));
@@ -692,8 +727,10 @@ fn build(app: &gtk::Application) {
                 line.append(&label);
                 item.set_child(Some(&line));
                 item.set_tooltip_text(Some(player.text(en, pt)));
-                player.sidebar_items.borrow_mut().push((page, item.clone()));
-                if page == Page::Playlists {
+                if let Some(page) = page {
+                    player.sidebar_items.borrow_mut().push((page, item.clone()));
+                }
+                if page == Some(Page::Playlists) {
                     player.accept_files(&item, Import::PickPlaylist);
                 }
                 player.sidebar.append(&item);
@@ -702,12 +739,12 @@ fn build(app: &gtk::Application) {
                     if let Some(popup) = popup.upgrade() {
                         popup.popdown();
                     }
-                    player.show(page);
+                    open(player);
                 });
                 tile.add_css_class("nav-tile");
                 let content = gtk::Box::new(gtk::Orientation::Vertical, 4);
                 content.append(&gtk::Image::from_icon_name(icon));
-                let short = if page == Page::Playlists {
+                let short = if page == Some(Page::Playlists) {
                     player.text("Playlists", "Listas")
                 } else {
                     player.text(en, pt)
@@ -889,7 +926,8 @@ fn build(app: &gtk::Application) {
         if let Some(player) = refresh_player.upgrade() {
             player.update_transport();
             player.update_repeat();
-            player.show(Page::Preferences);
+            player.show(player.page.get());
+            player.reopen_preferences();
         }
     });
     player.window.add_action(&language_action);
@@ -903,7 +941,7 @@ fn build(app: &gtk::Application) {
     });
     player.window.add_action(&close);
     app.set_accels_for_action("win.close", &["<Primary>q"]);
-    player.install_shortcuts(app);
+    player.install_shortcuts(app.upcast_ref());
 
     // The window holds the player until close; timers and other signals use weak references.
     let keep_alive = RefCell::new(Some(player.clone()));
@@ -1183,33 +1221,23 @@ impl Player {
             .text(english, portuguese)
     }
 
-    /// Shows a message above the page. It can be closed and goes away on its own after a while.
+    /// Shows a message over the page. It can be closed and goes away on its own after a while.
     fn message(&self, message: &str) {
-        self.status.set_text(message);
-        self.status_bar.set_visible(!message.is_empty());
-        if let Some(timer) = self.status_timer.take() {
-            timer.remove();
+        if let Some(previous) = self.toast.take() {
+            previous.dismiss();
         }
         if message.is_empty() {
             return;
         }
         // Long messages stay a little longer so there is time to read them.
-        let seconds = 6 + message.chars().count() as u64 / 25;
-        let bar = self.status_bar.downgrade();
-        let shown = message.to_owned();
-        let label = self.status.downgrade();
-        let pending = self.status_timer.clone();
-        let timer = glib::timeout_add_local_once(Duration::from_secs(seconds), move || {
-            // The source is gone once it has run, so it must not be removed again.
-            pending.take();
-            let (Some(bar), Some(label)) = (bar.upgrade(), label.upgrade()) else {
-                return;
-            };
-            if label.text() == shown {
-                bar.set_visible(false);
-            }
-        });
-        self.status_timer.replace(Some(timer));
+        let seconds = 6 + message.chars().count() as u32 / 25;
+        let toast = adw::Toast::builder()
+            .title(message)
+            .use_markup(false)
+            .timeout(seconds)
+            .build();
+        self.toasts.add_toast(toast.clone());
+        self.toast.replace(Some(toast));
     }
 
     fn save(&self) {
@@ -1237,6 +1265,10 @@ impl Player {
     fn show(self: &Rc<Self>, page: Page) {
         self.close_track_menu();
         let previous = self.page.replace(page);
+        // Over a narrow window the sidebar steps aside once a page is chosen.
+        if self.split_view.is_collapsed() {
+            self.split_view.set_show_sidebar(false);
+        }
         // An album or artist belongs to its list in the sidebar, a playlist to Playlists.
         let section = match page {
             Page::Album => Page::Albums,
@@ -1260,7 +1292,7 @@ impl Player {
                 Page::Library => self.library_search.borrow_mut().clear(),
                 Page::Queue => self.queue_query.borrow_mut().clear(),
                 Page::Playlist(_) => self.playlist_query.borrow_mut().1.clear(),
-                Page::Preferences | Page::Albums | Page::Album | Page::Artists | Page::Artist => {}
+                Page::Albums | Page::Album | Page::Artists | Page::Artist => {}
             }
         }
         self.columns.replace(None);
@@ -1285,7 +1317,6 @@ impl Player {
             Page::Playlists => self.playlists(),
             Page::Queue => self.queue(),
             Page::Playlist(index) => self.playlist(index),
-            Page::Preferences => self.preferences(),
         }
         self.fit_search();
     }

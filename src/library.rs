@@ -21,6 +21,8 @@ pub struct Library {
     pub position_ms: u64,
     pub language: Language,
     pub theme: Theme,
+    /// Light or dark for the System and GNOME/Adwaita themes; Ferritone is always dark.
+    pub color_scheme: ColorScheme,
     pub accent: Accent,
     pub repeat: Repeat,
     pub shuffle: bool,
@@ -218,6 +220,19 @@ pub enum Language {
 pub enum Theme {
     #[default]
     Ferritone,
+    /// Ferritone's own look in the desktop's colors, with the chosen accent.
+    System,
+    /// Plain libadwaita: no colors of Ferritone's own, the desktop's accent.
+    Adwaita,
+    /// Saved by older versions, when light and dark were themes; read as System.
+    Light,
+    /// Saved by older versions, when light and dark were themes; read as System.
+    Dark,
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Deserialize, Serialize)]
+pub enum ColorScheme {
+    #[default]
     System,
     Light,
     Dark,
@@ -246,7 +261,7 @@ impl Accent {
                 Some("pink") => "#d56199",
                 Some("purple") => "#9141ac",
                 Some("slate") => "#6f8396",
-                _ => "@theme_selected_bg_color",
+                _ => "@accent_bg_color",
             },
             Self::Copper => "#ee853f",
             Self::Green => "#78bc4a",
@@ -564,6 +579,7 @@ impl Library {
             Err(error) if error.kind() == io::ErrorKind::NotFound => Self::default(),
             Err(error) => return Err(error),
         };
+        library.migrate_theme();
         // A resume point newer than the library; ignored if unreadable or for another track.
         let resume = fs::read(resume_path(path))
             .ok()
@@ -575,6 +591,17 @@ impl Library {
             }
         }
         Ok(library)
+    }
+
+    /// Light and dark used to be themes of their own; they are now System with a color scheme.
+    fn migrate_theme(&mut self) {
+        let scheme = match self.theme {
+            Theme::Light => ColorScheme::Light,
+            Theme::Dark => ColorScheme::Dark,
+            _ => return,
+        };
+        self.theme = Theme::System;
+        self.color_scheme = scheme;
     }
 
     pub fn save(&self, path: &Path) -> io::Result<()> {
@@ -730,6 +757,23 @@ pub fn title(path: &Path) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn light_and_dark_themes_load_as_system_with_a_color_scheme() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("library.json");
+        for (saved, theme, scheme) in [
+            ("Light", Theme::System, ColorScheme::Light),
+            ("Dark", Theme::System, ColorScheme::Dark),
+            ("Ferritone", Theme::Ferritone, ColorScheme::System),
+            ("Adwaita", Theme::Adwaita, ColorScheme::System),
+        ] {
+            fs::write(&path, format!(r#"{{"theme":"{saved}"}}"#)).unwrap();
+            let library = Library::load(&path).unwrap();
+            assert!(std::mem::discriminant(&library.theme) == std::mem::discriminant(&theme));
+            assert!(library.color_scheme == scheme);
+        }
+    }
 
     #[test]
     fn library_hides_selected_tracks_and_folders_by_path_component() {

@@ -29,7 +29,7 @@ pub fn open(player: &Rc<Player>) {
     if matches!(player.state.borrow().theme, Theme::Ferritone) {
         window.add_css_class("ferritone");
     }
-    let header = gtk::HeaderBar::new();
+    let header = adw::HeaderBar::new();
     header.add_css_class("compact-titlebar");
     let heading = gtk::Label::new(Some(player.text("Mini player", "Miniplayer")));
     heading.add_css_class("title");

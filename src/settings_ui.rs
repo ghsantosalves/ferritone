@@ -404,35 +404,51 @@ impl Player {
         self.update_lyrics();
     }
 
-    pub(crate) fn fit_sidebar(&self) {
-        let visible = self.state.borrow().view.sidebar;
-        // get_visible reads the sidebar's own flag; is_visible also needs the window on screen,
-        // so at startup it reported "hidden" and the sidebar was never hidden.
-        if self.sidebar.get_visible() != visible {
-            self.sidebar.set_visible(visible);
+    /// Opens Preferences, or brings it forward when it is already open.
+    pub(crate) fn show_preferences(self: &Rc<Self>) {
+        if self.preferences_dialog.upgrade().is_some() {
+            return;
         }
+        let dialog = adw::PreferencesDialog::new();
+        dialog.set_title(self.text("Preferences", "Preferências"));
+        dialog.add(&self.preferences_page());
+        self.preferences_dialog.set(Some(&dialog));
+        dialog.present(Some(&self.window));
     }
 
-    pub(crate) fn preferences(self: &Rc<Self>) {
-        self.heading(self.text("Preferences", "Preferências"));
-        let form = gtk::Box::new(gtk::Orientation::Vertical, 8);
-        let hint = |text: &str| {
-            let label = gtk::Label::new(Some(text));
-            label.set_xalign(0.0);
-            label.set_wrap(true);
-            label.add_css_class("muted");
-            form.append(&label);
+    /// Rebuilds open Preferences, after the language changes.
+    pub(crate) fn reopen_preferences(self: &Rc<Self>) {
+        let Some(dialog) = self.preferences_dialog.upgrade() else {
+            return;
         };
-        hint(self.text("Display language", "Idioma da interface"));
-        let selector = gtk::DropDown::from_strings(&[
-            self.text("Use system language", "Usar idioma do sistema"),
-            "English",
-            "Português (Brasil)",
-            "Español",
-            "Français",
-        ]);
-        selector.add_css_class("preferences-control");
-        selector.set_halign(gtk::Align::Start);
+        let weak = Rc::downgrade(self);
+        // The language row that asked for this is still emitting its signal.
+        glib::idle_add_local_once(move || {
+            let Some(player) = weak.upgrade() else { return };
+            if let Some(page) = dialog.visible_page() {
+                dialog.remove(&page);
+            }
+            dialog.set_title(player.text("Preferences", "Preferências"));
+            dialog.add(&player.preferences_page());
+        });
+    }
+
+    fn preferences_page(self: &Rc<Self>) -> adw::PreferencesPage {
+        let page = adw::PreferencesPage::new();
+        page.set_title(self.text("Preferences", "Preferências"));
+        page.set_icon_name(Some("preferences-system-symbolic"));
+
+        let general = adw::PreferencesGroup::new();
+        let selector = combo_row(
+            self.text("Display language", "Idioma da interface"),
+            &[
+                self.text("Use system language", "Usar idioma do sistema"),
+                "English",
+                "Português (Brasil)",
+                "Español",
+                "Français",
+            ],
+        );
         selector.set_selected(match self.state.borrow().language {
             Language::System => 0,
             Language::English => 1,
@@ -458,53 +474,104 @@ impl Player {
                 );
             }
         });
-        form.append(&selector);
+        general.add(&selector);
+        page.add(&general);
 
-        hint(self.text("Appearance", "Aparência"));
-        let theme = gtk::DropDown::from_strings(&[
-            self.text("Follow system", "Seguir sistema"),
-            self.text("Light", "Claro"),
-            self.text("Dark", "Escuro"),
-            APP_NAME,
-        ]);
-        theme.add_css_class("preferences-control");
-        theme.set_halign(gtk::Align::Start);
+        let appearance = adw::PreferencesGroup::new();
+        appearance.set_title(self.text("Appearance", "Aparência"));
+        let theme = combo_row(
+            self.text("Theme", "Tema"),
+            &[APP_NAME, self.text("System", "Sistema"), "GNOME/Adwaita"],
+        );
         theme.set_selected(match self.state.borrow().theme {
-            Theme::System => 0,
-            Theme::Light => 1,
-            Theme::Dark => 2,
-            Theme::Ferritone => 3,
+            Theme::Ferritone => 0,
+            Theme::System | Theme::Light | Theme::Dark => 1,
+            Theme::Adwaita => 2,
         });
-        let weak = Rc::downgrade(self);
-        theme.connect_selected_notify(move |theme| {
-            let Some(player) = weak.upgrade() else { return };
-            player.state.borrow_mut().theme = match theme.selected() {
-                1 => Theme::Light,
-                2 => Theme::Dark,
-                3 => Theme::Ferritone,
-                _ => Theme::System,
-            };
-            player.apply_theme();
-            player.save();
+        let scheme = combo_row(
+            self.text("Color scheme", "Esquema de cores"),
+            &[
+                self.text("Follow system", "Seguir sistema"),
+                self.text("Light", "Claro"),
+                self.text("Dark", "Escuro"),
+            ],
+        );
+        scheme.set_selected(match self.state.borrow().color_scheme {
+            ColorScheme::System => 0,
+            ColorScheme::Light => 1,
+            ColorScheme::Dark => 2,
         });
-        form.append(&theme);
-
-        hint(self.text("Accent color", "Cor de destaque"));
-        let accent = gtk::DropDown::from_strings(&[
-            self.text("Follow system", "Seguir sistema"),
-            self.text("Green", "Verde"),
-            self.text("Blue", "Azul"),
-            self.text("Violet", "Violeta"),
-            self.text("Copper", "Cobre"),
-        ]);
-        accent.add_css_class("preferences-control");
-        accent.set_halign(gtk::Align::Start);
+        let accent = combo_row(
+            self.text("Accent color", "Cor de destaque"),
+            &[
+                self.text("Follow system", "Seguir sistema"),
+                self.text("Green", "Verde"),
+                self.text("Blue", "Azul"),
+                self.text("Violet", "Violeta"),
+                self.text("Copper", "Cobre"),
+            ],
+        );
         accent.set_selected(match self.state.borrow().accent {
             Accent::System => 0,
             Accent::Green => 1,
             Accent::Blue => 2,
             Accent::Violet => 3,
             Accent::Copper => 4,
+        });
+        // Ferritone is always dark, and GNOME/Adwaita always takes the desktop's accent.
+        let fit_rows = {
+            let (scheme, accent) = (scheme.downgrade(), accent.downgrade());
+            let weak = Rc::downgrade(self);
+            move || {
+                let (Some(player), Some(scheme), Some(accent)) =
+                    (weak.upgrade(), scheme.upgrade(), accent.upgrade())
+                else {
+                    return;
+                };
+                let theme = player.state.borrow().theme;
+                scheme.set_sensitive(!matches!(theme, Theme::Ferritone));
+                scheme.set_subtitle(if matches!(theme, Theme::Ferritone) {
+                    player.text(
+                        "The Ferritone theme is always dark.",
+                        "O tema Ferritone é sempre escuro.",
+                    )
+                } else {
+                    ""
+                });
+                accent.set_sensitive(!matches!(theme, Theme::Adwaita));
+                accent.set_subtitle(if matches!(theme, Theme::Adwaita) {
+                    player.text(
+                        "GNOME/Adwaita uses the system accent color.",
+                        "O GNOME/Adwaita usa a cor de destaque do sistema.",
+                    )
+                } else {
+                    ""
+                });
+            }
+        };
+        fit_rows();
+        let weak = Rc::downgrade(self);
+        theme.connect_selected_notify(move |theme| {
+            let Some(player) = weak.upgrade() else { return };
+            player.state.borrow_mut().theme = match theme.selected() {
+                1 => Theme::System,
+                2 => Theme::Adwaita,
+                _ => Theme::Ferritone,
+            };
+            fit_rows();
+            player.apply_theme();
+            player.save();
+        });
+        let weak = Rc::downgrade(self);
+        scheme.connect_selected_notify(move |scheme| {
+            let Some(player) = weak.upgrade() else { return };
+            player.state.borrow_mut().color_scheme = match scheme.selected() {
+                1 => ColorScheme::Light,
+                2 => ColorScheme::Dark,
+                _ => ColorScheme::System,
+            };
+            player.apply_theme();
+            player.save();
         });
         let weak = Rc::downgrade(self);
         accent.connect_selected_notify(move |accent| {
@@ -519,46 +586,42 @@ impl Player {
             player.apply_theme();
             player.save();
         });
-        form.append(&accent);
-
-        let menu_icons = gtk::CheckButton::with_label(self.text(
-            "Show icons in context menus",
-            "Mostrar ícones nos menus de contexto",
-        ));
-        menu_icons.set_active(self.state.borrow().view.context_menu_icons);
-        let weak = Rc::downgrade(self);
-        menu_icons.connect_toggled(move |button| {
-            if let Some(player) = weak.upgrade() {
-                player.state.borrow_mut().view.context_menu_icons = button.is_active();
-                player.save();
-            }
-        });
-        form.append(&menu_icons);
-        let menu_keycaps = gtk::CheckButton::with_label(self.text(
-            "Show keycaps for menu shortcuts",
-            "Mostrar teclas nos atalhos dos menus",
-        ));
-        menu_keycaps.set_active(self.state.borrow().view.context_menu_keycaps);
-        let weak = Rc::downgrade(self);
-        menu_keycaps.connect_toggled(move |button| {
-            if let Some(player) = weak.upgrade() {
-                player.state.borrow_mut().view.context_menu_keycaps = button.is_active();
-                player.save();
-            }
-        });
-        form.append(&menu_keycaps);
-
-        let heading = gtk::Label::new(Some(self.text("Lyrics", "Letras")));
-        heading.add_css_class("section-title");
-        heading.set_xalign(0.0);
-        form.append(&heading);
+        appearance.add(&theme);
+        appearance.add(&scheme);
+        appearance.add(&accent);
         let view = self.state.borrow().view;
-        let enabled = gtk::CheckButton::with_label(self.text("Enable lyrics", "Ativar letras"));
-        let online = gtk::CheckButton::with_label(
-            self.text("Look up lyrics online", "Buscar letras online"),
-        );
-        enabled.set_active(view.lyrics);
-        online.set_active(view.online_lyrics);
+        appearance.add(&self.switch_row(
+            self.text(
+                "Show icons in context menus",
+                "Mostrar ícones nos menus de contexto",
+            ),
+            view.context_menu_icons,
+            |player, active| player.state.borrow_mut().view.context_menu_icons = active,
+        ));
+        appearance.add(&self.switch_row(
+            self.text(
+                "Show keycaps for menu shortcuts",
+                "Mostrar teclas nos atalhos dos menus",
+            ),
+            view.context_menu_keycaps,
+            |player, active| player.state.borrow_mut().view.context_menu_keycaps = active,
+        ));
+        page.add(&appearance);
+
+        let lyrics = adw::PreferencesGroup::new();
+        lyrics.set_title(self.text("Lyrics", "Letras"));
+        let enabled = adw::SwitchRow::builder()
+            .title(self.text("Enable lyrics", "Ativar letras"))
+            .active(view.lyrics)
+            .build();
+        let online = adw::SwitchRow::builder()
+            .title(self.text("Look up lyrics online", "Buscar letras online"))
+            .subtitle(self.text(
+                "Online lookup sends track tags and duration to LRCLIB.",
+                "A busca online envia as tags e a duração da faixa ao LRCLIB.",
+            ))
+            .active(view.online_lyrics)
+            .build();
         enabled
             .bind_property("active", &online, "sensitive")
             .sync_create()
@@ -566,50 +629,68 @@ impl Player {
         self.lyrics_preference.set(Some(&enabled));
         self.online_lyrics_preference.set(Some(&online));
         let weak = Rc::downgrade(self);
-        enabled.connect_toggled(move |button| {
+        enabled.connect_active_notify(move |row| {
             if let Some(player) = weak.upgrade() {
-                player.set_lyrics_enabled(button.is_active());
+                player.set_lyrics_enabled(row.is_active());
             }
         });
         let weak = Rc::downgrade(self);
-        online.connect_toggled(move |button| {
+        online.connect_active_notify(move |row| {
             if let Some(player) = weak.upgrade() {
-                player.set_online_lyrics_enabled(button.is_active());
+                player.set_online_lyrics_enabled(row.is_active());
             }
         });
-        form.append(&enabled);
-        form.append(&online);
-        hint(self.text(
-            "Online lookup sends track tags and duration to LRCLIB.",
-            "A busca online envia as tags e a duração da faixa ao LRCLIB.",
-        ));
-        self.audio_preferences(&form);
-        self.listenbrainz_preferences(&form);
-        self.browser_shortcut_preferences(&form);
-        let scroll = gtk::ScrolledWindow::builder()
-            .hscrollbar_policy(gtk::PolicyType::Never)
-            .vexpand(true)
-            .child(&form)
-            .build();
-        self.content.append(&scroll);
+        lyrics.add(&enabled);
+        lyrics.add(&online);
+        page.add(&lyrics);
+        page.add(&self.audio_preferences());
+        page.add(&self.listenbrainz_preferences());
+        page.add(&self.browser_shortcut_preferences());
+        page
     }
 
-    pub(crate) fn audio_preferences(self: &Rc<Self>, form: &gtk::Box) {
+    /// A switch that saves its setting as it changes.
+    fn switch_row(
+        self: &Rc<Self>,
+        title: &str,
+        active: bool,
+        store: impl Fn(&Player, bool) + 'static,
+    ) -> adw::SwitchRow {
+        let row = adw::SwitchRow::builder()
+            .title(title)
+            .active(active)
+            .build();
+        let weak = Rc::downgrade(self);
+        row.connect_active_notify(move |row| {
+            if let Some(player) = weak.upgrade() {
+                store(&player, row.is_active());
+                player.save();
+            }
+        });
+        row
+    }
+
+    pub(crate) fn audio_preferences(self: &Rc<Self>) -> adw::PreferencesGroup {
         use replay_gain::Mode;
-        let audio = gtk::Label::new(Some(self.text("Audio", "Áudio")));
-        audio.add_css_class("section-title");
-        audio.set_xalign(0.0);
-        form.append(&audio);
-        let mode_label = gtk::Label::new(Some("ReplayGain"));
-        mode_label.set_xalign(0.0);
-        form.append(&mode_label);
-        let gain = gtk::DropDown::from_strings(&[
-            self.text("Off", "Desativado"),
-            self.text("Track gain", "Ganho por faixa"),
-            self.text("Album gain", "Ganho por álbum"),
-        ]);
-        gain.add_css_class("preferences-control");
-        gain.set_halign(gtk::Align::Start);
+        let group = adw::PreferencesGroup::new();
+        group.set_title(self.text("Audio", "Áudio"));
+        let has_gain = self.replay_gain.is_some();
+        let gain = combo_row(
+            "ReplayGain",
+            &[
+                self.text("Off", "Desativado"),
+                self.text("Track gain", "Ganho por faixa"),
+                self.text("Album gain", "Ganho por álbum"),
+            ],
+        );
+        gain.set_subtitle(if has_gain {
+            self.text(
+                "ReplayGain levels volume using the audio file's gain tags.",
+                "O ReplayGain nivela o volume usando as tags de ganho do arquivo.",
+            )
+        } else {
+            self.text("ReplayGain is unavailable.", "ReplayGain indisponível.")
+        });
         let saved = self.state.borrow().replay_gain;
         let index = match saved.mode {
             Mode::Off => 0,
@@ -617,14 +698,15 @@ impl Player {
             Mode::Album => 2,
         };
         gain.set_selected(index);
-        let has_gain = self.replay_gain.is_some();
         gain.set_sensitive(has_gain);
-        let protect = gtk::CheckButton::with_label(self.text(
-            "Limit gain to avoid clipping",
-            "Limitar o ganho para evitar distorção",
-        ));
-        protect.set_active(saved.protect_peaks);
-        protect.set_sensitive(has_gain && index != 0);
+        let protect = adw::SwitchRow::builder()
+            .title(self.text(
+                "Limit gain to avoid clipping",
+                "Limitar o ganho para evitar distorção",
+            ))
+            .active(saved.protect_peaks)
+            .sensitive(has_gain && index != 0)
+            .build();
         let weak = Rc::downgrade(self);
         let peak_toggle = protect.clone();
         gain.connect_selected_notify(move |gain| {
@@ -638,78 +720,64 @@ impl Player {
             player.save_replay_gain();
         });
         let weak = Rc::downgrade(self);
-        protect.connect_toggled(move |protect| {
+        protect.connect_active_notify(move |protect| {
             if let Some(player) = weak.upgrade() {
                 player.state.borrow_mut().replay_gain.protect_peaks = protect.is_active();
                 player.save_replay_gain();
             }
         });
-        form.append(&gain);
-        form.append(&protect);
-        let description = gtk::Label::new(Some(if has_gain {
-            self.text(
-                "ReplayGain levels volume using the audio file's gain tags.",
-                "O ReplayGain nivela o volume usando as tags de ganho do arquivo.",
-            )
-        } else {
-            self.text("ReplayGain is unavailable.", "ReplayGain indisponível.")
-        }));
-        description.set_xalign(0.0);
-        description.set_wrap(true);
-        form.append(&description);
-        let screen = gtk::CheckButton::with_label(self.text(
-            "Keep the screen from locking while playing",
-            "Não deixar a tela bloquear enquanto toca",
-        ));
-        screen.set_active(!self.state.borrow().allow_screen_lock);
+        group.add(&gain);
+        group.add(&protect);
+        let screen = adw::SwitchRow::builder()
+            .title(self.text(
+                "Keep the screen from locking while playing",
+                "Não deixar a tela bloquear enquanto toca",
+            ))
+            .active(!self.state.borrow().allow_screen_lock)
+            .build();
         let weak = Rc::downgrade(self);
-        screen.connect_toggled(move |screen| {
+        screen.connect_active_notify(move |screen| {
             if let Some(player) = weak.upgrade() {
                 player.state.borrow_mut().allow_screen_lock = !screen.is_active();
                 player.save();
                 player.refresh_inhibit();
             }
         });
-        form.append(&screen);
-        let awake = gtk::CheckButton::with_label(self.text(
-            "Keep the computer from sleeping while playing",
-            "Não deixar o computador suspender enquanto toca",
-        ));
-        awake.set_active(!self.state.borrow().allow_sleep);
-        awake.set_tooltip_text(Some(self.text(
-            "Suspending would stop the music",
-            "Suspender pararia a música",
-        )));
+        group.add(&screen);
+        let awake = adw::SwitchRow::builder()
+            .title(self.text(
+                "Keep the computer from sleeping while playing",
+                "Não deixar o computador suspender enquanto toca",
+            ))
+            .subtitle(self.text(
+                "Suspending would stop the music",
+                "Suspender pararia a música",
+            ))
+            .active(!self.state.borrow().allow_sleep)
+            .build();
         let weak = Rc::downgrade(self);
-        awake.connect_toggled(move |awake| {
+        awake.connect_active_notify(move |awake| {
             if let Some(player) = weak.upgrade() {
                 player.state.borrow_mut().allow_sleep = !awake.is_active();
                 player.save();
                 player.refresh_inhibit();
             }
         });
-        form.append(&awake);
-        let gpu = gtk::CheckButton::with_label(self.text(
-            "Draw the interface with the graphics card",
-            "Desenhar a interface com a placa de vídeo",
-        ));
-        gpu.set_active(self.state.borrow().gpu_rendering);
-        let weak = Rc::downgrade(self);
-        gpu.connect_toggled(move |gpu| {
-            if let Some(player) = weak.upgrade() {
-                player.state.borrow_mut().gpu_rendering = gpu.is_active();
-                player.save();
-            }
-        });
-        form.append(&gpu);
-        let note = gtk::Label::new(Some(self.text(
+        group.add(&awake);
+        let gpu = self.switch_row(
+            self.text(
+                "Draw the interface with the graphics card",
+                "Desenhar a interface com a placa de vídeo",
+            ),
+            self.state.borrow().gpu_rendering,
+            |player, active| player.state.borrow_mut().gpu_rendering = active,
+        );
+        gpu.set_subtitle(self.text(
             "Uses about 50 to 150 MB more memory. Takes effect after reopening Ferritone.",
             "Usa cerca de 50 a 150 MB a mais de memória. Vale depois de reabrir o Ferritone.",
-        )));
-        note.set_xalign(0.0);
-        note.set_wrap(true);
-        note.add_css_class("dim-label");
-        form.append(&note);
+        ));
+        group.add(&gpu);
+        group
     }
 
     pub(crate) fn save_replay_gain(&self) {
@@ -719,16 +787,18 @@ impl Player {
         self.save();
     }
 
-    /// Whether the chosen theme is dark, resolving "System" from the desktop setting.
+    /// Whether the chosen theme is dark, resolving "Follow system" from the desktop setting.
     pub(crate) fn theme_is_dark(&self) -> bool {
-        match self.state.borrow().theme {
-            Theme::System => match self.desktop_color_scheme().as_deref() {
+        let state = self.state.borrow();
+        match (state.theme, state.color_scheme) {
+            (Theme::Ferritone, _) => true,
+            (_, ColorScheme::Light) => false,
+            (_, ColorScheme::Dark) => true,
+            (_, ColorScheme::System) => match self.desktop_color_scheme().as_deref() {
                 Some("prefer-dark") => true,
                 Some("prefer-light") => false,
-                _ => self.default_dark,
+                _ => adw::StyleManager::default().is_dark(),
             },
-            Theme::Light => false,
-            Theme::Ferritone | Theme::Dark => true,
         }
     }
 
@@ -740,7 +810,7 @@ impl Player {
             .accent
             .color(self.desktop_accent().as_deref());
         let foreground = match accent {
-            "@theme_selected_bg_color" => "@theme_selected_fg_color",
+            "@accent_bg_color" => "@accent_fg_color",
             "#9141ac" => "#ffffff",
             _ => "#090b09",
         };
@@ -749,9 +819,19 @@ impl Player {
 
     /// Concrete colors for pages outside GTK, such as the phone remote, matching the theme.
     pub(crate) fn palette(&self) -> remote::Palette {
+        let system_accent = adw::StyleManager::default().accent_color_rgba();
+        let system_accent = format!(
+            "#{:02x}{:02x}{:02x}",
+            (system_accent.red() * 255.0).round() as u8,
+            (system_accent.green() * 255.0).round() as u8,
+            (system_accent.blue() * 255.0).round() as u8,
+        );
         let (accent, accent_text) = match self.accent_colors() {
-            // Adwaita's default blue stands in for the theme's own selection color.
-            ("@theme_selected_bg_color", _) => ("#3584e4", "#ffffff"),
+            // GNOME/Adwaita and an unknown system accent take libadwaita's resolved accent.
+            _ if matches!(self.state.borrow().theme, Theme::Adwaita) => {
+                (system_accent.as_str(), "#ffffff")
+            }
+            ("@accent_bg_color", _) => (system_accent.as_str(), "#ffffff"),
             colors => colors,
         };
         let dark = self.theme_is_dark();
@@ -783,16 +863,16 @@ impl Player {
     }
 
     pub(crate) fn apply_theme(&self) {
-        if let Some(settings) = gtk::Settings::default() {
-            settings.set_gtk_application_prefer_dark_theme(self.theme_is_dark());
-        }
-        let (accent, foreground) = self.accent_colors();
-        let ferritone = matches!(self.state.borrow().theme, Theme::Ferritone);
-        let (background, text) = if ferritone {
-            ("#1e1d1b", "#f5f3ef")
-        } else {
-            ("@theme_bg_color", "@theme_fg_color")
+        let (theme, scheme) = {
+            let state = self.state.borrow();
+            (state.theme, state.color_scheme)
         };
+        adw::StyleManager::default().set_color_scheme(match (theme, scheme) {
+            (Theme::Ferritone, _) | (_, ColorScheme::Dark) => adw::ColorScheme::ForceDark,
+            (_, ColorScheme::Light) => adw::ColorScheme::ForceLight,
+            (_, ColorScheme::System) => adw::ColorScheme::Default,
+        });
+        let ferritone = matches!(theme, Theme::Ferritone);
         // Every window, including the mini player, follows the theme as it changes.
         for window in gtk::Window::list_toplevels() {
             if let Ok(window) = window.downcast::<gtk::Window>() {
@@ -803,12 +883,74 @@ impl Player {
                 }
             }
         }
-        self.css.load_from_data(
+        if matches!(theme, Theme::Adwaita) {
+            // Only the layout stays; libadwaita draws every color.
+            self.css.load_from_data("");
+            return;
+        }
+        let (accent, foreground) = self.accent_colors();
+        let mut colors = String::new();
+        if ferritone {
+            // libadwaita's own widgets, such as dialogs, rows and popovers, take the charcoal too.
+            colors.push_str(FERRITONE_COLORS);
+        }
+        // The chosen accent also colors libadwaita's switches, links and suggested buttons.
+        // The desktop's own accent is already libadwaita's, and naming it again would loop.
+        if !accent.starts_with('@') {
+            colors.push_str(&format!(
+                "@define-color accent_bg_color {accent};\n\
+             @define-color accent_fg_color {foreground};\n\
+             @define-color accent_color {accent};\n"
+            ));
+        }
+        let (background, text) = if ferritone {
+            ("#1e1d1b", "#f5f3ef")
+        } else {
+            ("@window_bg_color", "@window_fg_color")
+        };
+        colors.push_str(
             &include_str!("style.css")
                 .replace("PLAYER_BACKGROUND", background)
                 .replace("PLAYER_TEXT", text)
                 .replace("ACCENT_COLOR", accent)
                 .replace("ACCENT_FOREGROUND", foreground),
         );
+        self.css.load_from_data(&colors);
     }
+
+    pub(crate) fn fit_sidebar(&self) {
+        // A narrow window folds the sidebar away; it opens over the page from the header.
+        let visible = self.state.borrow().view.sidebar && !self.split_view.is_collapsed();
+        if self.split_view.shows_sidebar() != visible {
+            self.split_view.set_show_sidebar(visible);
+        }
+    }
+}
+
+/// libadwaita's named colors in Ferritone's charcoal.
+const FERRITONE_COLORS: &str = "\
+@define-color window_bg_color #1e1d1b;
+@define-color window_fg_color #f5f3ef;
+@define-color view_bg_color #1e1d1b;
+@define-color view_fg_color #f5f3ef;
+@define-color headerbar_bg_color #36342f;
+@define-color headerbar_fg_color #f5f3ef;
+@define-color headerbar_backdrop_color #2a2926;
+@define-color sidebar_bg_color #23221f;
+@define-color sidebar_fg_color #f5f3ef;
+@define-color sidebar_backdrop_color #23221f;
+@define-color popover_bg_color #2a2926;
+@define-color popover_fg_color #f5f3ef;
+@define-color dialog_bg_color #2a2926;
+@define-color dialog_fg_color #f5f3ef;
+@define-color card_bg_color rgba(255, 255, 255, 0.05);
+@define-color card_fg_color #f5f3ef;
+";
+
+/// A row that picks one of `options`.
+fn combo_row(title: &str, options: &[&str]) -> adw::ComboRow {
+    adw::ComboRow::builder()
+        .title(title)
+        .model(&gtk::StringList::new(options))
+        .build()
 }

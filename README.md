@@ -25,7 +25,7 @@ On other distributions, download the `.flatpak` file from the same release and i
 - **Track tables** sort when you click a column header. In the queue and playlists, the next click reverses the sort and the third restores the original order. Sorting these views keeps the playback sequence. Drag a header to move the column or drag its divider to resize it. Double-click a divider to fit the column to the tracks in the current list.
 - The **playback menu** opens the mini player, the 10-band equalizer with presets, and View settings. Use the mini player's three-dot menu to show album art, live waveforms, and lyrics independently. Ferritone saves the combination and waveform style. The line uses rounded curves. Bars and the mirrored wave respond to the average energy of the audio and recede gradually between beats. The visualizations settle when playback is paused. The main progress slider hides when space is limited. The time display stays visible if enabled.
 - **View** lets you search its options and controls the visibility of interface elements, including the sidebar, title bar icon, playlist buttons, and drop area. Playlist controls can be hidden in the overview and in individual playlists. When the overview drop area is hidden, you can still drop files onto the list to create or add to a playlist. Drag the top edge of the playback bar to resize its height or drag the divider next to the track information to resize its width.
-- **Preferences** lets you change the theme, accent color, and language. Ferritone draws its interface in software by default, which uses far less memory than GTK's GPU renderers for about the same processor time; **Draw the interface with the graphics card** in **Preferences → Audio** switches back after a restart. With the **System** theme or accent, Ferritone follows the desktop's light or dark style and accent color, including when they change while it is open, inside or outside Flatpak. The remote control page uses the same colors. The default theme uses charcoal and copper. Ferritone follows the system language by default and includes English, Brazilian Portuguese, Spanish, and French. Other locales fall back to English.
+- **Preferences** lets you change the theme, color scheme, accent color, and language. The **Ferritone** theme uses charcoal and copper, **System** keeps Ferritone's look in the desktop's light or dark colors with the accent you choose, and **GNOME/Adwaita** leaves every color to libadwaita and the desktop's accent. In a narrow window the sidebar folds away behind a button in the header. Ferritone draws its interface in software by default, which uses far less memory than GTK's GPU renderers for about the same processor time; **Draw the interface with the graphics card** in **Preferences → Audio** switches back after a restart. With **Follow system** as the color scheme or accent, Ferritone follows the desktop's light or dark style and accent color, including when they change while it is open, inside or outside Flatpak. The remote control page uses the same colors. Ferritone follows the system language by default and includes English, Brazilian Portuguese, Spanish, and French. Other locales fall back to English.
 
 Ferritone currently plays local audio. Direct playback from a web URL is not implemented. File format support depends on the installed GStreamer plugins.
 
@@ -100,10 +100,10 @@ In **Preferences → Audio**, ReplayGain levels volume using embedded gain tags.
 
 ## Build
 
-Use Rust 1.85 or later, GTK 4.10 or later, GStreamer 1.0, a C linker, pkg-config, and the GLib resource compiler. On Debian 13:
+Use Rust 1.85 or later, GTK 4.10 or later, libadwaita 1.7 or later, GStreamer 1.0, a C linker, pkg-config, and the GLib resource compiler. On Debian 13:
 
 ```sh
-sudo apt install build-essential pkgconf libglib2.0-dev-bin libgtk-4-dev libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+sudo apt install build-essential pkgconf libglib2.0-dev-bin libgtk-4-dev libadwaita-1-dev libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 ```
 
 Clone the repository, then run Ferritone and its tests.
@@ -177,7 +177,7 @@ M3U8 exports use relative paths for tracks below the export folder and absolute 
 | Mini player, waveform rendering, lyrics, and equalizer | `src/mini.rs`, `src/waveform.rs`, `src/lyrics.rs`, `src/equalizer.rs` |
 | Library state, tag reading, and playlist import | `src/library.rs`, `src/metadata.rs`, `src/playlist_file.rs` |
 | Library visibility controls | `src/library_view.rs` |
-| Track columns, themes, and translations | `src/table.rs`, `src/style.css`, `src/i18n/` |
+| Track columns, themes, and translations | `src/table.rs`, `src/layout.css`, `src/style.css`, `src/i18n/` |
 | Track context menu and keyboard shortcuts | `src/track_menu.rs` |
 | Desktop media integration | `src/mpris.rs` |
 | ReplayGain and peak protection | `src/replay_gain.rs` |
